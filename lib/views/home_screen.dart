@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'barter/widgets/barter_item_selection_sheet.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -288,8 +288,12 @@ class HomeScreen extends StatelessWidget {
     ];
 
     final product = products[index];
-    return Container(
-      width: 160,
+    return GestureDetector(
+      onTap: () {
+        BarterItemSelectionSheet.show(context);
+      },
+      child: Container(
+        width: 160,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: Colors.white,
