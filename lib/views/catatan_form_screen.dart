@@ -6,12 +6,16 @@ class CatatanFormScreen extends StatefulWidget {
   const CatatanFormScreen({super.key});
 
   @override
-  State<CatatanFormScreen> createState() => _CatatanFormScreenState();
+  State<CatatanFormScreen> createState() =>
+      _CatatanFormScreenState();
 }
 
-class _CatatanFormScreenState extends State<CatatanFormScreen> {
+class _CatatanFormScreenState
+    extends State<CatatanFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _catatanController = TextEditingController();
+
+  final TextEditingController _catatanController =
+      TextEditingController();
 
   Item? _item;
 
@@ -19,7 +23,8 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    final arguments = ModalRoute.of(context)?.settings.arguments;
+    final arguments =
+        ModalRoute.of(context)?.settings.arguments;
 
     if (arguments is Item) {
       _item = arguments;
@@ -37,9 +42,11 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
       return;
     }
 
+    final catatan = _catatanController.text.trim();
+
     Navigator.pop(
       context,
-      _catatanController.text.trim(),
+      catatan,
     );
   }
 
@@ -50,6 +57,7 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
       appBar: AppBar(
         title: const Text('Tambah Catatan'),
         backgroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SafeArea(
         child: Form(
@@ -59,6 +67,9 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // =========================
+                // BARANG
+                // =========================
                 if (_item != null) ...[
                   Container(
                     width: double.infinity,
@@ -68,7 +79,8 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
                       children: [
                         const Text(
                           'Barang',
@@ -90,14 +102,19 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
                           _item!.subtitle,
                           style: const TextStyle(
                             color: Color(0xFF0D9488),
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
                 ],
 
+                // =========================
+                // JUDUL
+                // =========================
                 const Text(
                   'Catatan',
                   style: TextStyle(
@@ -108,30 +125,52 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
 
                 const SizedBox(height: 8),
 
+                // =========================
+                // TEXT FIELD
+                // =========================
                 TextFormField(
                   controller: _catatanController,
                   maxLines: 6,
+                  textInputAction: TextInputAction.newline,
                   decoration: InputDecoration(
-                    hintText: 'Tulis catatan kamu...',
+                    hintText:
+                        'Tulis catatan kamu...',
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius:
+                          BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    enabledBorder:
+                        OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
+                    focusedBorder:
+                        OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(16),
+                      borderSide:
+                          const BorderSide(
                         color: Color(0xFF0D9488),
+                        width: 2,
+                      ),
+                    ),
+                    errorBorder:
+                        OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(16),
+                      borderSide:
+                          const BorderSide(
+                        color: Colors.red,
                       ),
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
+                    if (value == null ||
+                        value.trim().isEmpty) {
                       return 'Catatan wajib diisi';
                     }
 
@@ -141,11 +180,20 @@ class _CatatanFormScreenState extends State<CatatanFormScreen> {
 
                 const Spacer(),
 
+                // =========================
+                // SIMPAN
+                // =========================
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton(
+                  height: 52,
+                  child: FilledButton.icon(
                     onPressed: _simpanCatatan,
-                    child: const Text('Simpan Catatan'),
+                    icon: const Icon(
+                      Icons.save_outlined,
+                    ),
+                    label: const Text(
+                      'Simpan Catatan',
+                    ),
                   ),
                 ),
               ],

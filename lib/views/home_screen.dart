@@ -12,17 +12,39 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // ==========================================
+  // REPOSITORY
+  // ==========================================
+
   final ItemRepository _repository = ItemRepository();
 
+  // ==========================================
+  // STATE
+  // ==========================================
+
   List<Item> _items = [];
+
   bool _isLoading = true;
+
   String? _errorMessage;
+
+  // Untuk menguji Error State Praktikum 2.
+  bool _simulateError = false;
+
+  // ==========================================
+  // INIT
+  // ==========================================
 
   @override
   void initState() {
     super.initState();
+
     _loadItems();
   }
+
+  // ==========================================
+  // LOAD DATA
+  // ==========================================
 
   Future<void> _loadItems() async {
     setState(() {
@@ -31,7 +53,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final items = await _repository.fetchItems();
+      final items = await _repository.fetchItems(
+        simulateError: _simulateError,
+      );
 
       if (!mounted) return;
 
@@ -49,6 +73,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ==========================================
+  // SIMULATE ERROR
+  // ==========================================
+
+  void _toggleSimulateError() {
+    setState(() {
+      _simulateError = !_simulateError;
+    });
+
+    _loadItems();
+  }
+
+  // ==========================================
+  // BUILD
+  // ==========================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,31 +96,45 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // =========================
+            // ==========================================
             // APP BAR
-            // =========================
+            // ==========================================
+
             SliverToBoxAdapter(
               child: _buildAppBar(),
             ),
 
-            // =========================
+            // ==========================================
             // QUICK ACTIONS
-            // =========================
+            // ==========================================
+
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  16,
+                  16,
+                  0,
+                ),
                 child: _buildQuickActions(),
               ),
             ),
 
-            // =========================
+            // ==========================================
             // BARANG TERBARU TITLE
-            // =========================
+            // ==========================================
+
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  24,
+                  16,
+                  0,
+                ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
                       'Barang Terbaru',
@@ -90,6 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.black87,
                       ),
                     ),
+
                     TextButton(
                       onPressed: () {},
                       child: const Text(
@@ -106,17 +161,25 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // =========================
+            // ==========================================
             // PRODUCT STATE
-            // =========================
+            // Loading / Error / Empty / Success
+            // ==========================================
+
             _buildProductState(),
 
-            // =========================
+            // ==========================================
             // KATEGORI POPULER
-            // =========================
+            // ==========================================
+
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  24,
+                  16,
+                  12,
+                ),
                 child: const Text(
                   'Kategori Populer',
                   style: TextStyle(
@@ -128,8 +191,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            // ==========================================
+            // CATEGORY GRID
+            // ==========================================
+
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                24,
+              ),
               sliver: SliverGrid(
                 gridDelegate:
                     const SliverGridDelegateWithFixedCrossAxisCount(
@@ -172,14 +244,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // =========================================================
+  // ==========================================
   // PRODUCT STATE
-  // =========================================================
+  // ==========================================
 
   Widget _buildProductState() {
-    // =========================
+    // ------------------------------------------
     // LOADING
-    // =========================
+    // ------------------------------------------
+
     if (_isLoading) {
       return const SliverToBoxAdapter(
         child: SizedBox(
@@ -189,9 +262,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // =========================
+    // ------------------------------------------
     // ERROR
-    // =========================
+    // ------------------------------------------
+
     if (_errorMessage != null) {
       return SliverToBoxAdapter(
         child: SizedBox(
@@ -204,9 +278,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // =========================
+    // ------------------------------------------
     // EMPTY
-    // =========================
+    // ------------------------------------------
+
     if (_items.isEmpty) {
       return const SliverToBoxAdapter(
         child: SizedBox(
@@ -218,9 +293,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // =========================
+    // ------------------------------------------
     // SUCCESS
-    // =========================
+    // ------------------------------------------
+
     return SliverToBoxAdapter(
       child: SizedBox(
         height: 220,
@@ -234,16 +310,18 @@ class _HomeScreenState extends State<HomeScreen> {
           scrollDirection: Axis.horizontal,
           itemCount: _items.length,
           itemBuilder: (context, index) {
-            return _buildProductCard(_items[index]);
+            return _buildProductCard(
+              _items[index],
+            );
           },
         ),
       ),
     );
   }
 
-  // =========================================================
+  // ==========================================
   // APP BAR
-  // =========================================================
+  // ==========================================
 
   Widget _buildAppBar() {
     return Container(
@@ -265,7 +343,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          // Logo
+          // ------------------------------------------
+          // LOGO + APP NAME
+          // ------------------------------------------
+
           Row(
             children: [
               Container(
@@ -273,7 +354,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 32,
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D9488),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius:
+                      BorderRadius.circular(8),
                 ),
                 child: const Icon(
                   Icons.recycling,
@@ -281,7 +363,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   size: 20,
                 ),
               ),
+
               const SizedBox(width: 8),
+
               const Text(
                 'CampuShift',
                 style: TextStyle(
@@ -295,6 +379,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const Spacer(),
 
+          // ------------------------------------------
+          // SIMULATE ERROR
+          // ------------------------------------------
+
+          IconButton(
+            tooltip: 'Simulasi Error',
+            onPressed: _toggleSimulateError,
+            icon: Icon(
+              _simulateError
+                  ? Icons.error_rounded
+                  : Icons.bug_report_outlined,
+              color: _simulateError
+                  ? Colors.red
+                  : Colors.black54,
+            ),
+          ),
+
+          // ------------------------------------------
+          // SEARCH
+          // ------------------------------------------
+
           IconButton(
             onPressed: () {},
             icon: const Icon(
@@ -302,6 +407,10 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.black54,
             ),
           ),
+
+          // ------------------------------------------
+          // NOTIFICATION
+          // ------------------------------------------
 
           IconButton(
             onPressed: () {},
@@ -311,13 +420,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icons.notifications_outlined,
                   color: Colors.black54,
                 ),
+
                 Positioned(
                   right: 0,
                   top: 0,
                   child: Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
+                    decoration:
+                        const BoxDecoration(
                       color: Color(0xFF0D9488),
                       shape: BoxShape.circle,
                     ),
@@ -331,33 +442,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // =========================================================
+  // ==========================================
   // QUICK ACTIONS
-  // =========================================================
+  // ==========================================
 
   Widget _buildQuickActions() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+            BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(
+              alpha: 0.05,
+            ),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              // ------------------------------------------
+              // PROFILE ICON
+              // ------------------------------------------
+
               CircleAvatar(
                 radius: 20,
                 backgroundColor:
-                    const Color(0xFF0D9488).withValues(alpha: 0.1),
+                    const Color(0xFF0D9488)
+                        .withValues(alpha: 0.1),
                 child: const Icon(
                   Icons.person,
                   color: Color(0xFF0D9488),
@@ -367,8 +487,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(width: 12),
 
+              // ------------------------------------------
+              // GREETING
+              // ------------------------------------------
+
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: const [
                   Text(
                     'Halo, Mahasiswa SALUD!',
@@ -381,7 +506,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Mellisa Annie',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
@@ -392,8 +518,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 20),
 
+          // ------------------------------------------
+          // QUICK ACTION BUTTONS
+          // ------------------------------------------
+
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment:
+                MainAxisAlignment.spaceAround,
             children: [
               _buildQuickActionItem(
                 Icons.sell_rounded,
@@ -422,9 +553,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // =========================================================
+  // ==========================================
   // QUICK ACTION ITEM
-  // =========================================================
+  // ==========================================
 
   Widget _buildQuickActionItem(
     IconData icon,
@@ -437,8 +568,11 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(14),
+            color: color.withValues(
+              alpha: 0.1,
+            ),
+            borderRadius:
+                BorderRadius.circular(14),
           ),
           child: Icon(
             icon,
@@ -461,21 +595,34 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // =========================================================
+  // ==========================================
   // PRODUCT CARD
-  // =========================================================
+  // ==========================================
 
   Widget _buildProductCard(Item item) {
-    IconData icon = Icons.inventory_2_rounded;
-    Color color = Colors.teal.shade100;
+    IconData icon =
+        Icons.inventory_2_rounded;
 
-    if (item.subtitle.toLowerCase().contains('buku')) {
+    Color color =
+        Colors.teal.shade100;
+
+    // ------------------------------------------
+    // ICON BERDASARKAN KATEGORI
+    // ------------------------------------------
+
+    if (item.subtitle
+        .toLowerCase()
+        .contains('buku')) {
       icon = Icons.menu_book_rounded;
       color = Colors.blue.shade100;
-    } else if (item.subtitle.toLowerCase().contains('elektronik')) {
+    } else if (item.subtitle
+        .toLowerCase()
+        .contains('elektronik')) {
       icon = Icons.devices_other_rounded;
       color = Colors.purple.shade100;
-    } else if (item.subtitle.toLowerCase().contains('furnitur')) {
+    } else if (item.subtitle
+        .toLowerCase()
+        .contains('furnitur')) {
       icon = Icons.chair_rounded;
       color = Colors.orange.shade100;
     }
@@ -490,26 +637,37 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: Container(
         width: 160,
-        margin: const EdgeInsets.only(right: 12),
+        margin: const EdgeInsets.only(
+          right: 12,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius:
+              BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withValues(
+                alpha: 0.06,
+              ),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
+            // ------------------------------------------
+            // PRODUCT IMAGE
+            // ------------------------------------------
+
             Container(
               height: 110,
               decoration: BoxDecoration(
                 color: color,
-                borderRadius: const BorderRadius.vertical(
+                borderRadius:
+                    const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
               ),
@@ -522,18 +680,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            // ------------------------------------------
+            // PRODUCT INFORMATION
+            // ------------------------------------------
+
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding:
+                  const EdgeInsets.all(10),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
                     item.title,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    overflow:
+                        TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
@@ -543,7 +709,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     item.subtitle,
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    overflow:
+                        TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 10,
                       color: Colors.black45,
@@ -556,8 +723,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'GRATIS',
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D9488),
+                      fontWeight:
+                          FontWeight.bold,
+                      color:
+                          Color(0xFF0D9488),
                     ),
                   ),
                 ],
@@ -569,9 +738,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // =========================================================
+  // ==========================================
   // CATEGORY CARD
-  // =========================================================
+  // ==========================================
 
   Widget _buildCategoryCard(
     IconData icon,
@@ -582,7 +751,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius:
+            BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -599,11 +769,15 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               label,
-              overflow: TextOverflow.ellipsis,
+              overflow:
+                  TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: iconColor.withValues(alpha: 0.8),
+                fontWeight:
+                    FontWeight.bold,
+                color: iconColor.withValues(
+                  alpha: 0.8,
+                ),
               ),
             ),
           ),
