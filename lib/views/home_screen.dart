@@ -1,7 +1,56 @@
 import 'package:flutter/material.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../data/item_repository.dart';
+import '../models/item.dart';
+import '../routes/app_routes.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final ItemRepository _repository = ItemRepository();
+  List<Item> _items = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  // Ubah menjadi true untuk mensimulasikan error saat memuat data (uji poin 4)
+  final bool _simulateError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final items = await _repository.fetchItems(simulateError: _simulateError);
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,9 +60,7 @@ class HomeScreen extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             // App Bar
-            SliverToBoxAdapter(
-              child: _buildAppBar(),
-            ),
+            SliverToBoxAdapter(child: _buildAppBar()),
             // Quick Actions
             SliverToBoxAdapter(
               child: Padding(
@@ -51,17 +98,9 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // Product List
+            // Product List with loading/empty/error states
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: 220,
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: 5,
-                  itemBuilder: (context, index) => _buildProductCard(index),
-                ),
-              ),
+              child: SizedBox(height: 220, child: _buildProductListContent()),
             ),
             // Kategori Populer
             SliverToBoxAdapter(
@@ -87,16 +126,80 @@ class HomeScreen extends StatelessWidget {
                   childAspectRatio: 2.8,
                 ),
                 delegate: SliverChildListDelegate([
-                  _buildCategoryCard(Icons.menu_book_rounded, 'Buku & Refere..', Colors.blue.shade50, Colors.blue),
-                  _buildCategoryCard(Icons.weekend_rounded, 'Furnitur Kos', Colors.orange.shade50, Colors.orange),
-                  _buildCategoryCard(Icons.devices_other_rounded, 'Elektronik', Colors.purple.shade50, Colors.purple),
-                  _buildCategoryCard(Icons.construction_rounded, 'Alat Kuliah', Colors.green.shade50, Colors.green),
+                  _buildCategoryCard(
+                    Icons.menu_book_rounded,
+                    'Buku & Refere..',
+                    Colors.blue.shade50,
+                    Colors.blue,
+                  ),
+                  _buildCategoryCard(
+                    Icons.weekend_rounded,
+                    'Furnitur Kos',
+                    Colors.orange.shade50,
+                    Colors.orange,
+                  ),
+                  _buildCategoryCard(
+                    Icons.devices_other_rounded,
+                    'Elektronik',
+                    Colors.purple.shade50,
+                    Colors.purple,
+                  ),
+                  _buildCategoryCard(
+                    Icons.construction_rounded,
+                    'Alat Kuliah',
+                    Colors.green.shade50,
+                    Colors.green,
+                  ),
                 ]),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProductListContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0D9488)),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Gagal memuat data:\n$_errorMessage',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+            TextButton(
+              onPressed: _fetchData,
+              child: const Text(
+                'Coba Lagi',
+                style: TextStyle(color: Color(0xFF0D9488)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_items.isEmpty) {
+      return const Center(child: Text('Belum ada barang tersedia.'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      scrollDirection: Axis.horizontal,
+      itemCount: _items.length,
+      itemBuilder: (context, index) => _buildProductCard(_items[index]),
     );
   }
 
@@ -125,7 +228,11 @@ class HomeScreen extends StatelessWidget {
                   color: const Color(0xFF0D9488),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.recycling, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.recycling,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 8),
               const Text(
@@ -190,7 +297,11 @@ class HomeScreen extends StatelessWidget {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: const Color(0xFF0D9488).withValues(alpha: 0.1),
-                child: const Icon(Icons.person, color: Color(0xFF0D9488), size: 22),
+                child: const Icon(
+                  Icons.person,
+                  color: Color(0xFF0D9488),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Column(
@@ -216,10 +327,26 @@ class HomeScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildQuickActionItem(Icons.sell_rounded, 'Jual', const Color(0xFF0D9488)),
-              _buildQuickActionItem(Icons.swap_horiz_rounded, 'Barter', Colors.orange),
-              _buildQuickActionItem(Icons.favorite_rounded, 'Donasi', Colors.pink),
-              _buildQuickActionItem(Icons.location_on_rounded, 'Peta', Colors.blue),
+              _buildQuickActionItem(
+                Icons.sell_rounded,
+                'Jual',
+                const Color(0xFF0D9488),
+              ),
+              _buildQuickActionItem(
+                Icons.swap_horiz_rounded,
+                'Barter',
+                Colors.orange,
+              ),
+              _buildQuickActionItem(
+                Icons.favorite_rounded,
+                'Donasi',
+                Colors.pink,
+              ),
+              _buildQuickActionItem(
+                Icons.location_on_rounded,
+                'Peta',
+                Colors.blue,
+              ),
             ],
           ),
         ],
@@ -242,121 +369,91 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildProductCard(int index) {
-    final List<Map<String, dynamic>> products = [
-      {
-        'name': 'Buku Kalkulus Purcheti Ed. 9',
-        'category': 'UI • Matematika Pusat',
-        'price': 'Rp 85.000',
-        'icon': Icons.menu_book_rounded,
-        'color': Colors.blue.shade100,
+  Widget _buildProductCard(Item product) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, AppRoutes.detail, arguments: product);
       },
-      {
-        'name': 'Laptop Stand Adjustable',
-        'category': 'ITB • Teknik Mesin',
-        'price': 'Rp 120.000',
-        'icon': Icons.laptop_mac_rounded,
-        'color': Colors.purple.shade100,
-      },
-      {
-        'name': 'Kursi Lipat Kuliah',
-        'category': 'UGM • FISIPOL',
-        'price': 'Rp 75.000',
-        'icon': Icons.chair_rounded,
-        'color': Colors.orange.shade100,
-      },
-      {
-        'name': 'Headphone Sony WH-1000',
-        'category': 'UI • Teknik Elektro',
-        'price': 'Rp 350.000',
-        'icon': Icons.headphones_rounded,
-        'color': Colors.green.shade100,
-      },
-      {
-        'name': 'Kamus Besar Bahasa Indonesia',
-        'category': 'UNAIR • FIB',
-        'price': 'Rp 45.000',
-        'icon': Icons.library_books_rounded,
-        'color': Colors.red.shade100,
-      },
-    ];
-
-    final product = products[index];
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 110,
-            decoration: BoxDecoration(
-              color: product['color'] as Color,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
-            child: Center(
-              child: Icon(
-                product['icon'] as IconData,
-                size: 48,
-                color: Colors.black38,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 110,
+              decoration: BoxDecoration(
+                color: Colors.blue.shade100,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.menu_book_rounded,
+                  size: 48,
+                  color: Colors.black38,
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product['name'] as String,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  product['category'] as String,
-                  style: const TextStyle(fontSize: 10, color: Colors.black45),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  product['price'] as String,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D9488),
+                  const SizedBox(height: 4),
+                  Text(
+                    product.subtitle,
+                    style: const TextStyle(fontSize: 10, color: Colors.black45),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCategoryCard(IconData icon, String label, Color bgColor, Color iconColor) {
+  Widget _buildCategoryCard(
+    IconData icon,
+    String label,
+    Color bgColor,
+    Color iconColor,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: bgColor,

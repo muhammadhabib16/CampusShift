@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'views/splash_screen.dart';
 
+import 'views/splash_screen.dart';
+import 'routes/app_routes.dart';
 void main() {
   runApp(const MainApp());
 }
@@ -20,8 +21,9 @@ class MainApp extends StatelessWidget {
           primary: const Color(0xFF0D9488),
         ),
       ),
-      home: const SplashScreen(),
+      initialRoute: AppRoutes.splash,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
+      onUnknownRoute: AppRoutes.onUnknownRoute,
     );
   }
 }
-

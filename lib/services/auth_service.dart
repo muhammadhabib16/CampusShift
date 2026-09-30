@@ -14,12 +14,28 @@ class AuthService {
     return 'http://127.0.0.1:3000/api/auth';
   }
 
+  static bool useDummy = true; // Ubah ke false untuk menggunakan API sungguhan
+
+  static const Map<String, dynamic> _dummyUser = {
+    'id': '1',
+    'full_name': 'Dummy Mahasiswa',
+    'nim': '1234567890',
+    'email': 'contoh@mahasiswa.ui.ac.id',
+  };
+
+  static const String _dummyToken = 'dummy_jwt_token_12345';
+
   static Future<Map<String, dynamic>> register({
     required String fullName,
     required String nim,
     required String email,
     required String password,
   }) async {
+    if (useDummy) {
+      await Future.delayed(const Duration(seconds: 1)); // Simulasi loading
+      return {'success': true, 'message': 'Registrasi berhasil (Dummy)'};
+    }
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/register'),
@@ -52,6 +68,20 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    if (useDummy) {
+      await Future.delayed(const Duration(seconds: 1)); // Simulasi loading
+      
+      // Validasi dummy sederhana
+      if (email.isNotEmpty && password.isNotEmpty) {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('jwt_token', _dummyToken);
+        await prefs.setString('user_data', jsonEncode(_dummyUser));
+        return {'success': true, 'message': 'Login berhasil (Dummy)'};
+      } else {
+        return {'success': false, 'message': 'Email atau password salah'};
+      }
+    }
+
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
