@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'register_screen.dart';
-import 'main_screen.dart';
-import 'services/auth_service.dart';
+import 'package:campusshift/data/auth_repository.dart';
+import '../routes/app_routes.dart';
+import '../utils/validators.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +13,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>(); // BARU
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -25,45 +26,45 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _navigateToRegister() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const RegisterScreen()),
-    );
+    Navigator.of(context).pushNamed(AppRoutes.register); // named route
   }
 
   Future<void> _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email dan Password tidak boleh kosong')),
-      );
-      return;
-    }
+    // Validasi form (aturan ada di Validators)
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
     });
 
-    final result = await AuthService.login(
-      email: _emailController.text,
-      password: _passwordController.text,
-    );
+    try {
+      final result = await AuthRepository.login(
+        identifier: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (!mounted) return;
-
-    if (result['success']) {
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Login berhasil')),
+        );
+        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Login gagal')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Login berhasil')),
+        const SnackBar(content: Text('Terjadi kesalahan, coba lagi')),
       );
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Login gagal')),
-      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -74,7 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
+          child: Form(
+            key: _formKey, // BARU
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 32),
@@ -122,8 +125,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
+              TextFormField(
                 controller: _emailController,
+                validator: Validators.emailOrNim, // BARU
                 decoration: InputDecoration(
                   hintText: 'contoh@mahasiswa.ui.ac.id',
                   hintStyle: const TextStyle(color: Colors.black38),
@@ -155,9 +159,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
+              TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
+                validator: Validators.password, // BARU
                 decoration: InputDecoration(
                   hintText: '••••••••',
                   hintStyle: const TextStyle(color: Colors.black38),
@@ -254,6 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
+          ), // penutup Form
         ),
       ),
     );

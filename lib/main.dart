@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'routes/app_routes.dart'; // BARU
 import 'views/splash_screen.dart';
 
 void main() {
@@ -21,6 +22,7 @@ class MainApp extends StatelessWidget {
         ),
       ),
       home: const SplashScreen(),
+      onGenerateRoute: AppRoutes.onGenerateRoute, // BARU
     );
   }
 }

@@ -9,9 +9,9 @@ class AuthService {
   // localhost (127.0.0.1) untuk iOS simulator
   static String get baseUrl {
     if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api/auth';
+      return 'http://10.0.2.2:5000/api/auth';
     }
-    return 'http://127.0.0.1:3000/api/auth';
+    return 'http://127.0.0.1:5000/api/auth';
   }
 
   static Future<Map<String, dynamic>> register({

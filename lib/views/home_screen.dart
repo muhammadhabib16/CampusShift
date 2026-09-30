@@ -1,7 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:campusshift/data/product_repository.dart';
+import '../models/product.dart';
+import '../routes/app_routes.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // BARU: status tampilan
+  List<Product> _products = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  // BARU: memuat data dengan try/catch/finally
+  Future<void> _loadProducts() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await ProductRepository.fetchProducts();
+      if (!mounted) return;
+      setState(() {
+        _products = result;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Gagal memuat barang. Coba lagi.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // BARU: kirim Product ke layar Detail
+  void _openDetail(Product product) {
+    Navigator.of(context).pushNamed(AppRoutes.productDetail, arguments: product);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +105,7 @@ class HomeScreen extends StatelessWidget {
             SliverToBoxAdapter(
               child: SizedBox(
                 height: 220,
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: 5,
-                  itemBuilder: (context, index) => _buildProductCard(index),
-                ),
+                child: _buildProductList(), // DIUBAH
               ),
             ),
             // Kategori Populer
@@ -97,6 +142,61 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  // BARU: loading / error / kosong / data
+  Widget _buildProductList() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0D9488)),
+      );
+    }
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 40, color: Colors.black38),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
+            ),
+            TextButton(
+              onPressed: _loadProducts,
+              child: const Text(
+                'Muat Ulang',
+                style: TextStyle(
+                  color: Color(0xFF0D9488),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_products.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.inventory_2_outlined, size: 40, color: Colors.black38),
+            SizedBox(height: 8),
+            Text(
+              'Belum ada barang',
+              style: TextStyle(fontSize: 13, color: Colors.black54),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      scrollDirection: Axis.horizontal,
+      itemCount: _products.length,
+      itemBuilder: (context, index) => _buildProductCard(_products[index]),
     );
   }
 
@@ -248,47 +348,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProductCard(int index) {
-    final List<Map<String, dynamic>> products = [
-      {
-        'name': 'Buku Kalkulus Purcheti Ed. 9',
-        'category': 'UI • Matematika Pusat',
-        'price': 'Rp 85.000',
-        'icon': Icons.menu_book_rounded,
-        'color': Colors.blue.shade100,
-      },
-      {
-        'name': 'Laptop Stand Adjustable',
-        'category': 'ITB • Teknik Mesin',
-        'price': 'Rp 120.000',
-        'icon': Icons.laptop_mac_rounded,
-        'color': Colors.purple.shade100,
-      },
-      {
-        'name': 'Kursi Lipat Kuliah',
-        'category': 'UGM • FISIPOL',
-        'price': 'Rp 75.000',
-        'icon': Icons.chair_rounded,
-        'color': Colors.orange.shade100,
-      },
-      {
-        'name': 'Headphone Sony WH-1000',
-        'category': 'UI • Teknik Elektro',
-        'price': 'Rp 350.000',
-        'icon': Icons.headphones_rounded,
-        'color': Colors.green.shade100,
-      },
-      {
-        'name': 'Kamus Besar Bahasa Indonesia',
-        'category': 'UNAIR • FIB',
-        'price': 'Rp 45.000',
-        'icon': Icons.library_books_rounded,
-        'color': Colors.red.shade100,
-      },
-    ];
-
-    final product = products[index];
-    return Container(
+  Widget _buildProductCard(Product product) {
+    // DIUBAH: menerima Product, tap membuka Detail
+    return GestureDetector(
+      onTap: () => _openDetail(product),
+      child: Container(
       width: 160,
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
@@ -308,12 +372,12 @@ class HomeScreen extends StatelessWidget {
           Container(
             height: 110,
             decoration: BoxDecoration(
-              color: product['color'] as Color,
+              color: product.color,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Center(
               child: Icon(
-                product['icon'] as IconData,
+                product.icon,
                 size: 48,
                 color: Colors.black38,
               ),
@@ -325,7 +389,7 @@ class HomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  product['name'] as String,
+                  product.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -336,12 +400,12 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  product['category'] as String,
+                  product.category,
                   style: const TextStyle(fontSize: 10, color: Colors.black45),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  product['price'] as String,
+                  product.price,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -352,6 +416,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
