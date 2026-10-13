@@ -20,13 +20,15 @@ Proyek ini menggunakan pola arsitektur **Model-View-ViewModel (MVVM)**. File har
 
 ## 3. Aturan Modul & *Low Coupling* (Ketergantungan Rendah)
 - **Komunikasi Antar Modul via ID:** Saat modul Anda butuh data dari modul lain (misalnya Modul Barter butuh Barang dari Modul Listing), **oper `ID` (contoh: `itemId`), bukan seluruh objek data**.
-- **Hindari Mengubah UI Modul Lain:** Jika aksi di Modul 3 (Habib) mengubah status barang (Terkunci/Locked), biarkan API Backend yang mengunci statusnya di database. Saat pengguna pindah ke halaman Modul 1, minta halaman tersebut me-refresh datanya dari API. Jangan memaksa *update state* secara *hardcode* menyilang antar layar.
+- **Hindari Mengubah UI Modul Lain:** Jika aksi di Modul 3 (Habib) membuat barter berstatus Locked, biarkan API Backend yang mengubah status kedua barang menjadi `Reserved` di database. Saat pengguna pindah ke halaman Modul 1, minta halaman tersebut me-refresh datanya dari API. Jangan memaksa *update state* secara *hardcode* menyilang antar layar.
+- **Status Barang Hanya Diubah Server:** Status barang (`Available`, `Reserved`, `Completed`, `Archived`) mengikuti tabel aturan status di PRD v1.1 bagian 2.5. Aplikasi hanya menampilkan status hasil dari API, tidak menghitung atau mengubahnya sendiri.
 - **Gunakan Rute Terpusat:** Gunakan sistem *routing* untuk berpindah halaman (misal `Navigator.pushNamed`), dan daftarkan rutenya di file utama atau pengelola rute agar rapi.
 
 ## 4. Standar Backend & Integrasi API
 - **Kepatuhan Mutlak Non-Firebase:** Sesuai PRD, seluruh penyimpanan data (termasuk Auth dan Foto) **wajib menggunakan RESTful API dan Database Relasional di VPS**. Dilarang menggunakan Firebase (termasuk untuk fungsi Auth).
 - **Pengamanan Sesi (JWT):** Saat memanggil *endpoint* API yang bersifat privat (Create, Update, Delete), **wajib** menyertakan JSON Web Token (JWT) pada *Header HTTP* (`Authorization: Bearer <token>`).
 - **Penanganan Error (*Error Handling*):** Gunakan `try-catch` saat memanggil API. Selalu tampilkan `SnackBar` atau dialog informatif kepada *user* apabila terjadi *Timeout* atau gagal memuat data. Jangan biarkan aplikasi *crash* (layar merah) atau *loading* tanpa henti.
+- **Notifikasi Tanpa FCM:** Semua notifikasi memakai `flutter_local_notifications`. Pilih jenis pemicu sesuai PRD v1.1 bagian 2.8: **terjadwal lokal** (waktu sudah diketahui perangkat sendiri), **langsung lokal** (setelah aksi di perangkat sendiri berhasil), atau **berbasis sinkronisasi** (event dari pengguna lain, dicek ke server saat aplikasi dibuka/aktif). Jangan menjanjikan notifikasi instan untuk event dari perangkat lain.
 
 ## 5. UI/UX & Standar Material 3
 - Gunakan komponen **Material Design 3** (seperti `Card`, `ElevatedButton`, `NavigationBar`).
@@ -38,4 +40,4 @@ Proyek ini menggunakan pola arsitektur **Model-View-ViewModel (MVVM)**. File har
 - **Catat Penggunaan AI (AI Usage Log):** Setiap kali menggunakan AI untuk kode besar atau perbaikan bug, catat di dalam folder `docs/ai_logs/`. Setiap anggota membuat file log-nya sendiri (misal: `habib_log.md`). Gunakan format yang ada di `docs/ai_logs/TEMPLATE.md` untuk mencatat Prompt, Hasil, Modifikasi Anda, dan Testing.
 
 ---
-*Dengan mematuhi panduan ini, integrasi kelima modul (Auth, Listing, Peta, Barter, Handover, dan Hibah) akan berjalan mulus tanpa bentrok di akhir semester.*
+*Dengan mematuhi panduan ini, integrasi modul Auth dan kelima modul fungsional (Listing, Safe-Meet & Pertemuan, Barter, Serah Terima QR, dan Hibah) akan berjalan mulus tanpa bentrok di akhir semester.*
