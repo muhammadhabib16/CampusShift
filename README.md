@@ -12,7 +12,17 @@ Mahasiswa sering melepas atau mencari barang bekas perlengkapan kuliah lewat gru
 Listing berfoto riil  →  Kesepakatan (Jual / Barter / Hibah)  →  Pertemuan di titik temu resmi  →  Serah terima QR  →  Ulasan
 ```
 
-Spesifikasi lengkap ada di [PRD v1.1](docs/prd.md) ([versi PDF](docs/PRD_CampusShift_Kelompok_3_v1.1.pdf)).
+Barang dapat berpindah tangan melalui tiga jalur:
+
+| Jalur | Cara Kerja | Pembayaran |
+|---|---|---|
+| **Jual** | Peminat mengajukan pertemuan COD, pemilik mengonfirmasi. | Tunai, langsung saat bertemu |
+| **Barter** | Tukar barang dengan barang, bisa disertai selisih tunai (*cash top-up*); kedua pihak wajib menyetujui (*dual-confirmation*). | Selisih tunai (jika ada) diserahkan saat bertemu |
+| **Hibah** | Pemohon mengajukan klaim berdasarkan urgensi kebutuhan; donatur memilih penerima. | Gratis |
+
+Hanya ada satu jenis akun (Mahasiswa). Dalam setiap transaksi, pengguna berperan sebagai **Pemilik Barang** (penjual/donatur) atau **Peminat** (pembeli/pengaju barter/pemohon).
+
+Spesifikasi lengkap ada di [PRD v1.2](docs/prd.md) ([versi PDF](docs/PRD_CampusShift_Kelompok_3_v1.2.pdf)).
 
 ## Tim & Pembagian Modul
 
@@ -35,6 +45,18 @@ Backend REST API dikoordinasikan oleh Bayu dan Habib. Jadwal dan to-do tiap angg
 - **Notifikasi:** `flutter_local_notifications` (tanpa FCM)
 - **Hardware:** Kamera (`image_picker`, `mobile_scanner`) dan GPS (`geolocator`, `flutter_map`)
 - **Tanpa Firebase** dalam bentuk apa pun (database, auth, storage, maupun notifikasi)
+- **Tanpa payment gateway**
+
+## Cakupan
+
+**Termasuk:** autentikasi & profil, listing berfoto kamera, titik temu resmi kampus dengan jarak GPS, barter dengan dual-confirmation, klaim hibah, validasi serah terima dengan kode QR, ulasan & reputasi, serta notifikasi lokal per modul.
+
+**Tidak termasuk:**
+- **Payment gateway dan pencatatan pembayaran.** Uang tunai (harga jual atau cash top-up) diserahkan langsung saat bertemu di titik temu; transaksi dinyatakan selesai melalui pemindaian QR serah terima, bukan konfirmasi pembayaran.
+- Fitur chat antar pengguna, kurir/ekspedisi, dan push notification real-time.
+- Platform iOS dan Web.
+
+Daftar lengkap ada di PRD bagian 3 (Scope).
 
 ## Struktur Proyek
 
@@ -90,7 +112,7 @@ Ringkasan dari [TEAM_GUIDELINES.md](docs/TEAM_GUIDELINES.md):
 
 ## Dokumentasi
 
-- [PRD v1.1](docs/prd.md) — masalah, peran pengguna, functional/non-functional requirements, alur, data
+- [PRD v1.2](docs/prd.md) ([PDF](docs/PRD_CampusShift_Kelompok_3_v1.2.pdf)) — masalah, peran pengguna, requirement beserta aturan bisnis & kriteria penerimaan, siklus status, notifikasi, skenario uji
 - [Timeline v4](docs/CampuShift_Timeline_v4.xlsx) — Gantt chart, to-do per anggota, milestone
 - [Panduan Tim](docs/TEAM_GUIDELINES.md) — Git, MVVM, integrasi antar modul, standar API & UI
 - [Aturan Project Mobile 2026](docs/Aturan_Project_Mobile_2026.md) — ketentuan tugas dari dosen
