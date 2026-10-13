@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'main_screen.dart';
-
+import 'services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -11,7 +11,13 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
+  bool _isLoading = false;
   String? _selectedUniversity;
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _nimController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   final List<String> _universities = [
     'Universitas Indonesia (UI)',
@@ -26,14 +32,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Universitas Hasanuddin (UNHAS)',
   ];
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _nimController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   void _navigateToLogin() {
     Navigator.of(context).pop();
   }
 
-  void _register() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainScreen()),
+  Future<void> _register() async {
+    if (_nameController.text.isEmpty ||
+        _nimController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Semua kolom wajib diisi')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await AuthService.register(
+      fullName: _nameController.text,
+      nim: _nimController.text,
+      email: _emailController.text,
+      password: _passwordController.text,
     );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (!mounted) return;
+
+    if (result['success']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? 'Registrasi berhasil, silakan login')),
+      );
+      Navigator.of(context).pop(); // Kembali ke halaman login
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message'] ?? 'Registrasi gagal')),
+      );
+    }
   }
 
   @override
@@ -69,13 +118,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // Nama Lengkap
               _buildLabel('Nama Lengkap'),
               const SizedBox(height: 8),
-              _buildTextField(hintText: 'Mellisa Annie'),
+              _buildTextField(hintText: 'Mellisa Annie', controller: _nameController),
               const SizedBox(height: 20),
 
               // NIM
               _buildLabel('NIM'),
               const SizedBox(height: 8),
-              _buildTextField(hintText: '12022004123'),
+              _buildTextField(hintText: '12022004123', controller: _nimController),
               const SizedBox(height: 20),
 
               // Universitas
@@ -124,13 +173,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // Email Kampus
               _buildLabel('Email Kampus'),
               const SizedBox(height: 8),
-              _buildTextField(hintText: 'mellisa@mahasiswa.ui.ac.id'),
+              _buildTextField(hintText: 'mellisa@mahasiswa.ui.ac.id', controller: _emailController),
               const SizedBox(height: 20),
 
               // Kata Sandi
               _buildLabel('Kata Sandi'),
               const SizedBox(height: 8),
               TextField(
+                controller: _passwordController,
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   hintText: '••••••',
@@ -172,21 +222,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _register,
+                  onPressed: _isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D9488),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  child: const Text(
-                    'Daftar Sekarang',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isLoading 
+                    ? const SizedBox(
+                        height: 20, 
+                        width: 20, 
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                      )
+                    : const Text(
+                        'Daftar Sekarang',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -228,8 +284,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildTextField({required String hintText}) {
+  Widget _buildTextField({required String hintText, TextEditingController? controller}) {
     return TextField(
+      controller: controller,
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
