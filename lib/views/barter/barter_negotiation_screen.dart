@@ -9,7 +9,42 @@ class BarterNegotiationScreen extends StatefulWidget {
 }
 
 class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
-  final TextEditingController _cashAdditionController = TextEditingController(text: '55.000');
+  final TextEditingController _cashAdditionController = TextEditingController(text: '55000');
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  void _submitProposal() async {
+    // 1. Input/Event: User menekan tombol Kirim Penawaran
+    
+    // 3. Validation: Memeriksa validitas form
+    if (_formKey.currentState!.validate()) {
+      // 2. State: Mengubah state form menjadi loading
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Simulasi proses pengiriman ke server
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        // 4. Feedback: Menampilkan pesan sukses
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Penawaran Barter Berhasil Dikirim!'),
+            backgroundColor: Color(0xFF0D9488),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // 5. Navigation: Navigasi kembali ke layar sebelumnya / menuju list barter
+        Navigator.pop(context); // Kembali ke list/home
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,140 +69,163 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Item Exchange Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Item Exchange Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildItemColumn(
+                      'Barang Kamu',
+                      'Kalkulator Casio FX-991EX',
+                      'Rp 195.000',
+                      Icons.calculate,
+                      const Color(0xFF0D9488),
+                    ),
+                    const Icon(Icons.swap_horiz, color: Color(0xFF0D9488), size: 28),
+                    _buildItemColumn(
+                      'Barang Mereka',
+                      'Buku Fisika Dasar',
+                      'Rp 250.000',
+                      Icons.menu_book,
+                      Colors.orange,
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
+              const SizedBox(height: 24),
+              // Price Difference
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildItemColumn(
-                    'Barang Kamu',
-                    'Kalkulator Casio FX-991EX',
-                    'Rp 195.000',
-                    Icons.calculate,
-                    const Color(0xFF0D9488),
+                  const Text(
+                    'Selisih Harga:',
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
                   ),
-                  const Icon(Icons.swap_horiz, color: Color(0xFF0D9488), size: 28),
-                  _buildItemColumn(
-                    'Barang Mereka',
-                    'Buku Fisika Dasar',
-                    'Rp 250.000',
-                    Icons.menu_book,
-                    Colors.orange,
+                  const Text(
+                    '- Rp 55.000',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            // Price Difference
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Selisih Harga:',
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
+              const SizedBox(height: 16),
+              const Text(
+                'Tambah Selisih Tunai (Rp)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-                const Text(
-                  '- Rp 55.000',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _cashAdditionController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  prefixText: 'Rp ',
+                  prefixStyle: const TextStyle(color: Colors.black87, fontSize: 14),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFF0D9488)),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Tambah Selisih Tunai (Rp)',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                validator: (value) {
+                  // 3. Validation Rules
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Selisih tunai tidak boleh kosong';
+                  }
+                  final intValue = int.tryParse(value);
+                  if (intValue == null) {
+                    return 'Hanya boleh berisi angka';
+                  }
+                  if (intValue < 0) {
+                    return 'Tidak boleh bernilai negatif';
+                  }
+                  return null;
+                },
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _cashAdditionController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                prefixText: 'Rp ',
-                prefixStyle: const TextStyle(color: Colors.black87, fontSize: 14),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF0D9488)),
+              const SizedBox(height: 32),
+              const Text(
+                'PESAN PENAWARAN',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black54,
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'PESAN PENAWARAN',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
+              const SizedBox(height: 16),
+              // Chat bubbles
+              _buildChatBubble(
+                text: 'Halo, bukunya masih mulus. Mau nambah selisih tunai gak untuk penawarannya?',
+                time: '10:02',
+                isMe: false,
               ),
-            ),
-            const SizedBox(height: 16),
-            // Chat bubbles
-            _buildChatBubble(
-              text: 'Halo, bukunya masih mulus. Mau nambah selisih tunai gak untuk penawarannya?',
-              time: '10:02',
-              isMe: false,
-            ),
-            const SizedBox(height: 16),
-            _buildChatBubble(
-              text: 'Boleh, ini saya tambah tunai Rp 55.000 ya agar pas dengan taksiran harga.',
-              time: '10:05',
-              isMe: true,
-            ),
-          ],
+              const SizedBox(height: 16),
+              _buildChatBubble(
+                text: 'Boleh, ini saya tambah tunai sesuai taksiran harga.',
+                time: '10:05',
+                isMe: true,
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const BarterConfirmationScreen()),
-              );
-            },
+            onPressed: _isLoading ? null : _submitProposal,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0D9488),
+              disabledBackgroundColor: Colors.grey.shade300,
               minimumSize: const Size(double.infinity, 50),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: const Text(
-              'Lanjut Konfirmasi',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
+            child: _isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text(
+                    'Kirim Penawaran Barter',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
           ),
         ),
       ),
