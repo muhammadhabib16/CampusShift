@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'barter/widgets/barter_item_selection_sheet.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -11,9 +13,7 @@ class HomeScreen extends StatelessWidget {
         child: CustomScrollView(
           slivers: [
             // App Bar
-            SliverToBoxAdapter(
-              child: _buildAppBar(),
-            ),
+            SliverToBoxAdapter(child: _buildAppBar()),
             // Quick Actions
             SliverToBoxAdapter(
               child: Padding(
@@ -54,12 +54,13 @@ class HomeScreen extends StatelessWidget {
             // Product List
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 220,
+                height: 240,
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                   scrollDirection: Axis.horizontal,
                   itemCount: 5,
-                  itemBuilder: (context, index) => _buildProductCard(index),
+                  itemBuilder: (context, index) =>
+                      _buildProductCard(context, index),
                 ),
               ),
             ),
@@ -87,10 +88,30 @@ class HomeScreen extends StatelessWidget {
                   childAspectRatio: 2.8,
                 ),
                 delegate: SliverChildListDelegate([
-                  _buildCategoryCard(Icons.menu_book_rounded, 'Buku & Refere..', Colors.blue.shade50, Colors.blue),
-                  _buildCategoryCard(Icons.weekend_rounded, 'Furnitur Kos', Colors.orange.shade50, Colors.orange),
-                  _buildCategoryCard(Icons.devices_other_rounded, 'Elektronik', Colors.purple.shade50, Colors.purple),
-                  _buildCategoryCard(Icons.construction_rounded, 'Alat Kuliah', Colors.green.shade50, Colors.green),
+                  _buildCategoryCard(
+                    Icons.menu_book_rounded,
+                    'Buku & Refere..',
+                    Colors.blue.shade50,
+                    Colors.blue,
+                  ),
+                  _buildCategoryCard(
+                    Icons.weekend_rounded,
+                    'Furnitur Kos',
+                    Colors.orange.shade50,
+                    Colors.orange,
+                  ),
+                  _buildCategoryCard(
+                    Icons.devices_other_rounded,
+                    'Elektronik',
+                    Colors.purple.shade50,
+                    Colors.purple,
+                  ),
+                  _buildCategoryCard(
+                    Icons.construction_rounded,
+                    'Alat Kuliah',
+                    Colors.green.shade50,
+                    Colors.green,
+                  ),
                 ]),
               ),
             ),
@@ -125,7 +146,11 @@ class HomeScreen extends StatelessWidget {
                   color: const Color(0xFF0D9488),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.recycling, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.recycling,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 8),
               const Text(
@@ -190,7 +215,11 @@ class HomeScreen extends StatelessWidget {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: const Color(0xFF0D9488).withValues(alpha: 0.1),
-                child: const Icon(Icons.person, color: Color(0xFF0D9488), size: 22),
+                child: const Icon(
+                  Icons.person,
+                  color: Color(0xFF0D9488),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 12),
               Column(
@@ -216,10 +245,26 @@ class HomeScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildQuickActionItem(Icons.sell_rounded, 'Jual', const Color(0xFF0D9488)),
-              _buildQuickActionItem(Icons.swap_horiz_rounded, 'Barter', Colors.orange),
-              _buildQuickActionItem(Icons.favorite_rounded, 'Donasi', Colors.pink),
-              _buildQuickActionItem(Icons.location_on_rounded, 'Peta', Colors.blue),
+              _buildQuickActionItem(
+                Icons.sell_rounded,
+                'Jual',
+                const Color(0xFF0D9488),
+              ),
+              _buildQuickActionItem(
+                Icons.swap_horiz_rounded,
+                'Barter',
+                Colors.orange,
+              ),
+              _buildQuickActionItem(
+                Icons.favorite_rounded,
+                'Donasi',
+                Colors.pink,
+              ),
+              _buildQuickActionItem(
+                Icons.location_on_rounded,
+                'Peta',
+                Colors.blue,
+              ),
             ],
           ),
         ],
@@ -242,13 +287,17 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black87,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildProductCard(int index) {
+  Widget _buildProductCard(BuildContext context, int index) {
     final List<Map<String, dynamic>> products = [
       {
         'name': 'Buku Kalkulus Purcheti Ed. 9',
@@ -288,75 +337,87 @@ class HomeScreen extends StatelessWidget {
     ];
 
     final product = products[index];
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 110,
-            decoration: BoxDecoration(
-              color: product['color'] as Color,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+    return GestureDetector(
+      onTap: () {
+        BarterItemSelectionSheet.show(context);
+      },
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
-            child: Center(
-              child: Icon(
-                product['icon'] as IconData,
-                size: 48,
-                color: Colors.black38,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 110,
+              decoration: BoxDecoration(
+                color: product['color'] as Color,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  product['icon'] as IconData,
+                  size: 48,
+                  color: Colors.black38,
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product['name'] as String,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product['name'] as String,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  product['category'] as String,
-                  style: const TextStyle(fontSize: 10, color: Colors.black45),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  product['price'] as String,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D9488),
+                  const SizedBox(height: 4),
+                  Text(
+                    product['category'] as String,
+                    style: const TextStyle(fontSize: 10, color: Colors.black45),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    product['price'] as String,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D9488),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCategoryCard(IconData icon, String label, Color bgColor, Color iconColor) {
+  Widget _buildCategoryCard(
+    IconData icon,
+    String label,
+    Color bgColor,
+    Color iconColor,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: bgColor,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
+import 'barter/barter_list_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,7 +16,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     HomeScreen(),
     _ComingSoonScreen(label: 'Katalog'),
-    _ComingSoonScreen(label: 'Barter'),
+    BarterListScreen(),
     ProfileScreen(),
   ];
 
