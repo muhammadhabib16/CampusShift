@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'barter_confirmation_screen.dart';
 
 class BarterNegotiationScreen extends StatefulWidget {
   const BarterNegotiationScreen({super.key});
