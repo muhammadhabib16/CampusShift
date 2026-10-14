@@ -4,14 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 
 class AuthService {
-  // Gunakan IP yang tepat berdasarkan platform atau device yang dipakai
-  // 10.0.2.2 untuk emulator Android
-  // localhost (127.0.0.1) untuk iOS simulator
+  // Untuk perangkat Android melalui USB, gunakan `adb reverse` agar
+  // localhost perangkat diteruskan ke localhost komputer.
   static String get baseUrl {
     if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api/auth';
+      return 'http://127.0.0.1:5000/api/auth';
     }
-    return 'http://127.0.0.1:3000/api/auth';
+    return 'http://127.0.0.1:5000/api/auth';
   }
 
   static Future<Map<String, dynamic>> register({
