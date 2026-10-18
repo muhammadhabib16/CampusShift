@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../handover/serah_terima_qr_screen.dart';
 
 class BarterListScreen extends StatelessWidget {
   const BarterListScreen({super.key});
@@ -78,12 +79,12 @@ class _BarterList extends StatelessWidget {
       separatorBuilder: (context, index) => const Divider(height: 24, color: Color(0xFFEEEEEE)),
       itemBuilder: (context, index) {
         final barter = barters[index];
-        return _buildBarterItem(barter);
+        return _buildBarterItem(context, barter);
       },
     );
   }
 
-  Widget _buildBarterItem(Map<String, dynamic> data) {
+  Widget _buildBarterItem(BuildContext context, Map<String, dynamic> data) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -146,7 +147,12 @@ class _BarterList extends StatelessWidget {
             ),
             GestureDetector(
               onTap: () {
-                // Navigate to detail
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SerahTerimaQrScreen(),
+                  ),
+                );
               },
               child: const Row(
                 children: [

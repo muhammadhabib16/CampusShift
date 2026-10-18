@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../handover/serah_terima_qr_screen.dart';
 
 class BarterConfirmationScreen extends StatelessWidget {
   const BarterConfirmationScreen({super.key});
@@ -108,11 +109,18 @@ class BarterConfirmationScreen extends StatelessWidget {
             // Biometric Auth
             GestureDetector(
               onTap: () {
-                // Handle auth
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Kesepakatan Berhasil Dikunci!')),
+                  const SnackBar(
+                    content: Text('Kesepakatan Berhasil Dikunci! Menuju Serah Terima QR...'),
+                    backgroundColor: Color(0xFF0D9488),
+                  ),
                 );
-                Navigator.popUntil(context, (route) => route.isFirst);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SerahTerimaQrScreen(),
+                  ),
+                );
               },
               child: Container(
                 width: double.infinity,
