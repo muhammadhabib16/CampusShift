@@ -22,7 +22,7 @@ Barang dapat berpindah tangan melalui tiga jalur:
 
 Hanya ada satu jenis akun (Mahasiswa). Dalam setiap transaksi, pengguna berperan sebagai **Pemilik Barang** (penjual/donatur) atau **Peminat** (pembeli/pengaju barter/pemohon).
 
-Spesifikasi lengkap ada di [PRD v1.2](docs/prd.md) ([versi PDF](docs/PRD_CampusShift_Kelompok_3_v1.2.pdf)).
+Spesifikasi lengkap ada di [PRD v1.3](docs/prd/prd.md) ([versi PDF](docs/prd/PRD_CampusShift_Kelompok_3_v1.3.pdf)).
 
 ## Tim & Pembagian Modul
 
@@ -35,25 +35,26 @@ Spesifikasi lengkap ada di [PRD v1.2](docs/prd.md) ([versi PDF](docs/PRD_CampusS
 | M4: Serah Terima QR & Reputasi | Fadel Muhammad | 2411522029 | QR token sekali pakai, pemindai QR, bukti serah terima, ulasan |
 | M5: Hibah & Klaim | Muhammad Racha Ardiwinata | 2411522020 | Klaim berbasis urgensi, antrean donatur, persetujuan klaim |
 
-Backend REST API dikoordinasikan oleh Bayu dan Habib. Jadwal dan to-do tiap anggota ada di [timeline v4](docs/CampuShift_Timeline_v4.xlsx).
+Backend REST API dikoordinasikan oleh Bayu dan Habib. Jadwal dan to-do tiap anggota ada di [timeline v4](docs/perencanaan/CampuShift_Timeline_v4.xlsx).
 
 ## Tech Stack
 
 - **Mobile:** Flutter (Dart SDK `^3.13.1`), Material Design 3, target Android 8.0 (API 26) – Android 14
-- **Arsitektur:** MVVM (`views/`, `viewmodels/`, `models/`, `services/`)
+- **Arsitektur:** MVVM (`views/`, `viewmodels/`, `models/`, `services/`) dengan state management `provider` (`ChangeNotifier`)
 - **Backend:** RESTful API mandiri (Node.js/Express) + basis data relasional, autentikasi JWT
 - **Notifikasi:** `flutter_local_notifications` (tanpa FCM)
-- **Hardware:** Kamera (`image_picker`, `mobile_scanner`) dan GPS (`geolocator`, `flutter_map`)
+- **Hardware:** Kamera (`image_picker`, `mobile_scanner`) dan GPS (`geolocator`)
+- **Peta:** `flutter_map` dengan tile OpenStreetMap, hanya sebagai tampilan visual titik temu COD di sekitar Universitas Andalas
 - **Tanpa Firebase** dalam bentuk apa pun (database, auth, storage, maupun notifikasi)
 - **Tanpa payment gateway**
 
 ## Cakupan
 
-**Termasuk:** autentikasi & profil, listing berfoto kamera, titik temu resmi kampus dengan jarak GPS, barter dengan dual-confirmation, klaim hibah, validasi serah terima dengan kode QR, ulasan & reputasi, serta notifikasi lokal per modul.
+**Termasuk:** autentikasi & profil, listing berfoto kamera, titik temu COD resmi di sekitar Universitas Andalas (peta visual dan jarak GPS), barter dengan dual-confirmation, klaim hibah, validasi serah terima dengan kode QR, ulasan & reputasi, serta notifikasi lokal per modul.
 
 **Tidak termasuk:**
 - **Payment gateway dan pencatatan pembayaran.** Uang tunai (harga jual atau cash top-up) diserahkan langsung saat bertemu di titik temu; transaksi dinyatakan selesai melalui pemindaian QR serah terima, bukan konfirmasi pembayaran.
-- Fitur chat antar pengguna, kurir/ekspedisi, dan push notification real-time.
+- Fitur chat antar pengguna dan pesan teks pada tawaran barter (komunikasi lanjutan direncanakan lewat WhatsApp), kurir/ekspedisi, dan push notification real-time.
 - Platform iOS dan Web.
 
 Daftar lengkap ada di PRD bagian 3 (Scope).
@@ -62,24 +63,27 @@ Daftar lengkap ada di PRD bagian 3 (Scope).
 
 ```
 lib/
-├── main.dart              # Entry point & tema (seed color #0D9488)
-├── models/                # Entitas data + fromJson/toJson
-├── services/              # Pemanggilan REST API / local storage
-│   └── auth_service.dart
-├── viewmodels/            # State management & logika per modul
-└── views/                 # UI (widget) saja, tanpa pemanggilan API langsung
+├── main.dart              # Entry point, tema, & pendaftaran ViewModel (MultiProvider)
+├── models/                # Entitas data + fromJson/toJson (barter_item, barter_deal)
+├── services/              # Sumber data: REST API / local storage (auth_service, barter_service)
+├── viewmodels/            # State & logika per modul, ChangeNotifier (auth_view_model, barter_view_model)
+├── utils/                 # Fungsi bantu umum (formatters)
+└── views/                 # UI (widget) saja; membaca state dari ViewModel, tanpa memanggil service
     ├── splash_screen.dart, onboarding_screen.dart
     ├── login_screen.dart, register_screen.dart
     ├── main_screen.dart, home_screen.dart, profile_screen.dart
     └── barter/            # Modul 3
+test/                      # Unit test ViewModel & widget test alur barter
 docs/
-├── prd.md                 # Product Requirements Document
-├── TEAM_GUIDELINES.md     # Aturan kolaborasi tim (wajib dibaca)
-├── Aturan_Project_Mobile_2026.md
+├── README.md              # Indeks dokumen
+├── prd/                   # PRD (md + PDF) dan diagram alur
+├── laporan/               # Progress report & lampiran
+├── perencanaan/           # Timeline & to-do per anggota
+├── panduan/               # TEAM_GUIDELINES (wajib dibaca) & aturan project dari dosen
 └── ai_logs/               # AI Usage Log per anggota
 ```
 
-Folder `models/` dan `viewmodels/` dibuat seiring pengerjaan tiap modul.
+Alur data mengikuti MVVM: **View → ViewModel → Service → API/data**. View tidak memanggil service secara langsung. Jalankan `flutter test` untuk menguji ViewModel dan alur barter.
 
 ## Menjalankan Aplikasi
 
@@ -102,7 +106,7 @@ flutter run
 
 ## Alur Kerja Git
 
-Ringkasan dari [TEAM_GUIDELINES.md](docs/TEAM_GUIDELINES.md):
+Ringkasan dari [TEAM_GUIDELINES.md](docs/panduan/TEAM_GUIDELINES.md):
 
 1. Kerjakan di branch modul masing-masing: `modul-[nama]` (contoh: `modul-habib`). **Jangan commit atau push langsung ke `main`.**
 2. Sebelum membuat Pull Request, sinkronkan dulu: `git pull origin main`.
@@ -112,7 +116,8 @@ Ringkasan dari [TEAM_GUIDELINES.md](docs/TEAM_GUIDELINES.md):
 
 ## Dokumentasi
 
-- [PRD v1.2](docs/prd.md) ([PDF](docs/PRD_CampusShift_Kelompok_3_v1.2.pdf)) — masalah, peran pengguna, requirement beserta aturan bisnis & kriteria penerimaan, siklus status, notifikasi, skenario uji
-- [Timeline v4](docs/CampuShift_Timeline_v4.xlsx) — Gantt chart, to-do per anggota, milestone
-- [Panduan Tim](docs/TEAM_GUIDELINES.md) — Git, MVVM, integrasi antar modul, standar API & UI
-- [Aturan Project Mobile 2026](docs/Aturan_Project_Mobile_2026.md) — ketentuan tugas dari dosen
+- [PRD v1.3](docs/prd/prd.md) ([PDF](docs/prd/PRD_CampusShift_Kelompok_3_v1.3.pdf)) — masalah, peran pengguna, requirement beserta aturan bisnis & kriteria penerimaan, siklus status, notifikasi, skenario uji
+- [Timeline v4](docs/perencanaan/CampuShift_Timeline_v4.xlsx) — Gantt chart, to-do per anggota, milestone
+- [Panduan Tim](docs/panduan/TEAM_GUIDELINES.md) — Git, MVVM, integrasi antar modul, standar API & UI
+- [Progress Report 1](docs/laporan/progress_report_1.md) ([PDF](docs/laporan/Progress_Report_1_CampuShift_Kelompok_3.pdf)) — progress aplikasi, kendala, code audit & refactoring, koordinasi tim
+- [Aturan Project Mobile 2026](docs/panduan/Aturan_Project_Mobile_2026.md) — ketentuan tugas dari dosen

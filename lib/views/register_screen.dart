@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:provider/provider.dart';
+import '../viewmodels/auth_view_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -10,7 +11,6 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
-  bool _isLoading = false;
   String? _selectedUniversity;
 
   final TextEditingController _nameController = TextEditingController();
@@ -45,47 +45,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    if (_nameController.text.isEmpty ||
-        _nimController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Semua kolom wajib diisi')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final result = await AuthService.register(
+    final authViewModel = context.read<AuthViewModel>();
+    final success = await authViewModel.register(
       fullName: _nameController.text,
       nim: _nimController.text,
       email: _emailController.text,
       password: _passwordController.text,
     );
 
-    setState(() {
-      _isLoading = false;
-    });
-
     if (!mounted) return;
 
-    if (result['success']) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Registrasi berhasil, silakan login')),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(authViewModel.message ?? '')),
+    );
+    if (success) {
       Navigator.of(context).pop(); // Kembali ke halaman login
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Registrasi gagal')),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthViewModel>().isLoading;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -221,14 +201,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _register,
+                  onPressed: isLoading ? null : _register,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D9488),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  child: _isLoading 
+                  child: isLoading 
                     ? const SizedBox(
                         height: 20, 
                         width: 20, 

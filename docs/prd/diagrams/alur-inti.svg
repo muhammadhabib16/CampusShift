@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="452" viewBox="0 0 640 452" font-family="Arial, Helvetica, sans-serif" font-size="11">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#000"/></marker></defs>
+<rect x="0" y="0" width="640" height="452" fill="#ffffff"/>
+<rect x="160.0" y="10" width="320" height="52" rx="26" fill="#e6e6e6" stroke="#000" stroke-width="1.2"/>
+<text x="320.0" y="33.0" text-anchor="middle" font-weight="bold" font-size="12">[M1] Listing Berfoto Riil</text>
+<text x="320.0" y="48.0" text-anchor="middle">Pemilik Barang mengunggah barang (Jual / Hibah)</text>
+<path d="M320.0,62 L320.0,96" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<text x="328.0" y="84" font-style="italic" font-weight="bold">Peminat memilih jalur</text>
+<path d="M118,96 L522,96" fill="none" stroke="#000" stroke-width="1.2"/>
+<path d="M118,96 L118,118" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="20.0" y="118" width="196" height="70" rx="4" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="118" y="143.0" text-anchor="middle" font-weight="bold" font-size="12">Jual</text>
+<text x="118" y="158.0" text-anchor="middle">Langsung mengajukan</text>
+<text x="118" y="172.0" text-anchor="middle">pertemuan COD</text>
+<path d="M118,188 L118,214" fill="none" stroke="#000" stroke-width="1.2"/>
+<path d="M320.0,96 L320.0,118" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="222.0" y="118" width="196" height="70" rx="4" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="320.0" y="143.0" text-anchor="middle" font-weight="bold" font-size="12">Barter — [M3]</text>
+<text x="320.0" y="158.0" text-anchor="middle">Tawaran → negosiasi top-up</text>
+<text x="320.0" y="172.0" text-anchor="middle">→ dual-confirmation → Locked</text>
+<path d="M320.0,188 L320.0,214" fill="none" stroke="#000" stroke-width="1.2"/>
+<path d="M522,96 L522,118" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="424.0" y="118" width="196" height="70" rx="4" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="522" y="143.0" text-anchor="middle" font-weight="bold" font-size="12">Hibah — [M5]</text>
+<text x="522" y="158.0" text-anchor="middle">Klaim → antrean urgensi</text>
+<text x="522" y="172.0" text-anchor="middle">→ donatur menyetujui</text>
+<path d="M522,188 L522,214" fill="none" stroke="#000" stroke-width="1.2"/>
+<path d="M118,214 L522,214" fill="none" stroke="#000" stroke-width="1.2"/>
+<path d="M320.0,214 L320.0,244" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="140.0" y="244" width="360" height="62" rx="4" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="320.0" y="265.0" text-anchor="middle" font-weight="bold" font-size="12">[M2] Pertemuan di Safe-Meet Point Resmi</text>
+<text x="320.0" y="280.0" text-anchor="middle">Jadwal disepakati di titik temu resmi kampus</text>
+<text x="320.0" y="294.0" text-anchor="middle">(jarak GPS &amp; rute Google Maps)</text>
+<path d="M320.0,306 L320.0,336" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="140.0" y="336" width="360" height="62" rx="4" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="320.0" y="357.0" text-anchor="middle" font-weight="bold" font-size="12">[M4] Serah Terima QR → Selesai → Ulasan</text>
+<text x="320.0" y="372.0" text-anchor="middle">Token QR sekali pakai, bukti serah terima,</text>
+<text x="320.0" y="386.0" text-anchor="middle">ulasan permanen &amp; skor reputasi</text>
+<text x="320.0" y="430" text-anchor="middle" font-style="italic" fill="#333">Status barang: Available → Reserved (setelah kesepakatan) → Completed (setelah QR valid)</text>
+</svg>

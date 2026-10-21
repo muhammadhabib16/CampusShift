@@ -14,7 +14,7 @@ Dokumen ini berisi aturan main wajib bagi seluruh anggota tim pengembang CampuSh
 ## 2. Kepatuhan Arsitektur (MVVM)
 Proyek ini menggunakan pola arsitektur **Model-View-ViewModel (MVVM)**. File harus ditempatkan pada folder yang tepat di dalam direktori `lib/`:
 - `views/`: HANYA berisi kode antarmuka UI (Widget). **Dilarang melakukan pemanggilan API (HTTP Request) atau logika bisnis kompleks di sini.**
-- `viewmodels/`: Berisi logika state management (Provider/Riverpod/GetX). Tempat untuk menyimpan *state* sementara dan melakukan pemanggilan ke `services/`. **Pisahkan ViewModel antar modul** (misal: `BarterViewModel` jangan dicampur dengan `ListingViewModel`).
+- `viewmodels/`: Berisi logika state management dengan **Provider (`ChangeNotifier`)** sebagai standar tim. Daftarkan setiap ViewModel di `MultiProvider` pada `lib/main.dart`, lalu akses dari View dengan `context.watch<...>()` (membaca state) atau `context.read<...>()` (menjalankan aksi). Tempat untuk menyimpan *state* sementara dan melakukan pemanggilan ke `services/`. **Pisahkan ViewModel antar modul** (misal: `BarterViewModel` jangan dicampur dengan `ListingViewModel`).
 - `models/`: Berisi kelas representasi data (Entitas) dan logika serialisasi JSON (misal: `fromJson`, `toJson`).
 - `services/`: Berisi kode untuk integrasi ke Backend RESTful API atau *local storage*.
 

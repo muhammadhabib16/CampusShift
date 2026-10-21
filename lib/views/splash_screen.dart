@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'main_screen.dart';
 import 'onboarding_screen.dart';
+import '../viewmodels/auth_view_model.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,13 +31,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
     _animController.forward();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
-      }
-    });
+    _openNextScreen();
+  }
+
+  /// Setelah animasi, pengguna yang masih login langsung ke Beranda.
+  Future<void> _openNextScreen() async {
+    final results = await Future.wait([
+      context.read<AuthViewModel>().restoreSession(),
+      Future.delayed(const Duration(seconds: 3)),
+    ]);
+    if (!mounted) return;
+    final loggedIn = results.first as bool;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => loggedIn ? const MainScreen() : const OnboardingScreen(),
+      ),
+    );
   }
 
   @override

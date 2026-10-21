@@ -1,12 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../models/listing_summary.dart';
+import '../utils/formatters.dart';
+import '../viewmodels/auth_view_model.dart';
+import '../viewmodels/home_view_model.dart';
 import 'barter/widgets/barter_item_selection_sheet.dart';
+
+/// Tampilan tiap kategori (PRD FR-01). Dipakai kartu kategori dan kartu barang.
+class _CategoryStyle {
+  final String label;
+  final IconData icon;
+  final MaterialColor color;
+  const _CategoryStyle(this.label, this.icon, this.color);
+}
+
+const Map<String, _CategoryStyle> _categoryStyles = {
+  'Buku & Referensi': _CategoryStyle('Buku & Refere..', Icons.menu_book_rounded, Colors.blue),
+  'Furnitur Kos': _CategoryStyle('Furnitur Kos', Icons.weekend_rounded, Colors.orange),
+  'Elektronik': _CategoryStyle('Elektronik', Icons.devices_other_rounded, Colors.purple),
+  'Alat Perkuliahan': _CategoryStyle('Alat Kuliah', Icons.construction_rounded, Colors.green),
+};
+
+const _defaultCategoryStyle = _CategoryStyle('Lainnya', Icons.inventory_2_outlined, Colors.grey);
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final homeViewModel = context.watch<HomeViewModel>();
+    final listings = homeViewModel.latestListings;
+    final displayName = context.watch<AuthViewModel>().displayName;
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
       body: SafeArea(
@@ -18,7 +43,7 @@ class HomeScreen extends StatelessWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: _buildQuickActions(),
+                child: _buildQuickActions(displayName),
               ),
             ),
             // Barang Terbaru
@@ -54,14 +79,20 @@ class HomeScreen extends StatelessWidget {
             // Product List
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 240,
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: 5,
-                  itemBuilder: (context, index) =>
-                      _buildProductCard(context, index),
-                ),
+                height: 252,
+                child: homeViewModel.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Color(0xFF0D9488)),
+                      )
+                    : homeViewModel.errorMessage != null
+                        ? Center(child: Text(homeViewModel.errorMessage!))
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: listings.length,
+                            itemBuilder: (context, index) =>
+                                _buildProductCard(context, listings[index]),
+                          ),
               ),
             ),
             // Kategori Populer
@@ -88,30 +119,13 @@ class HomeScreen extends StatelessWidget {
                   childAspectRatio: 2.8,
                 ),
                 delegate: SliverChildListDelegate([
-                  _buildCategoryCard(
-                    Icons.menu_book_rounded,
-                    'Buku & Refere..',
-                    Colors.blue.shade50,
-                    Colors.blue,
-                  ),
-                  _buildCategoryCard(
-                    Icons.weekend_rounded,
-                    'Furnitur Kos',
-                    Colors.orange.shade50,
-                    Colors.orange,
-                  ),
-                  _buildCategoryCard(
-                    Icons.devices_other_rounded,
-                    'Elektronik',
-                    Colors.purple.shade50,
-                    Colors.purple,
-                  ),
-                  _buildCategoryCard(
-                    Icons.construction_rounded,
-                    'Alat Kuliah',
-                    Colors.green.shade50,
-                    Colors.green,
-                  ),
+                  for (final style in _categoryStyles.values)
+                    _buildCategoryCard(
+                      style.icon,
+                      style.label,
+                      style.color.shade50,
+                      style.color,
+                    ),
                 ]),
               ),
             ),
@@ -193,7 +207,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActions() {
+  Widget _buildQuickActions(String displayName) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -224,14 +238,14 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Halo, Mahasiswa SALUD!',
+                children: [
+                  const Text(
+                    'Halo, Mahasiswa Unand!',
                     style: TextStyle(fontSize: 11, color: Colors.black54),
                   ),
                   Text(
-                    'Mellisa Annie',
-                    style: TextStyle(
+                    displayName,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
@@ -297,46 +311,8 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProductCard(BuildContext context, int index) {
-    final List<Map<String, dynamic>> products = [
-      {
-        'name': 'Buku Kalkulus Purcheti Ed. 9',
-        'category': 'UI • Matematika Pusat',
-        'price': 'Rp 85.000',
-        'icon': Icons.menu_book_rounded,
-        'color': Colors.blue.shade100,
-      },
-      {
-        'name': 'Laptop Stand Adjustable',
-        'category': 'ITB • Teknik Mesin',
-        'price': 'Rp 120.000',
-        'icon': Icons.laptop_mac_rounded,
-        'color': Colors.purple.shade100,
-      },
-      {
-        'name': 'Kursi Lipat Kuliah',
-        'category': 'UGM • FISIPOL',
-        'price': 'Rp 75.000',
-        'icon': Icons.chair_rounded,
-        'color': Colors.orange.shade100,
-      },
-      {
-        'name': 'Headphone Sony WH-1000',
-        'category': 'UI • Teknik Elektro',
-        'price': 'Rp 350.000',
-        'icon': Icons.headphones_rounded,
-        'color': Colors.green.shade100,
-      },
-      {
-        'name': 'Kamus Besar Bahasa Indonesia',
-        'category': 'UNAIR • FIB',
-        'price': 'Rp 45.000',
-        'icon': Icons.library_books_rounded,
-        'color': Colors.red.shade100,
-      },
-    ];
-
-    final product = products[index];
+  Widget _buildProductCard(BuildContext context, ListingSummary listing) {
+    final style = _categoryStyles[listing.category] ?? _defaultCategoryStyle;
     return GestureDetector(
       onTap: () {
         BarterItemSelectionSheet.show(context);
@@ -361,14 +337,14 @@ class HomeScreen extends StatelessWidget {
             Container(
               height: 110,
               decoration: BoxDecoration(
-                color: product['color'] as Color,
+                color: style.color.shade100,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
               ),
               child: Center(
                 child: Icon(
-                  product['icon'] as IconData,
+                  style.icon,
                   size: 48,
                   color: Colors.black38,
                 ),
@@ -380,7 +356,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product['name'] as String,
+                    listing.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -391,12 +367,12 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    product['category'] as String,
+                    listing.faculty,
                     style: const TextStyle(fontSize: 10, color: Colors.black45),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    product['price'] as String,
+                    formatRupiah(listing.price),
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,

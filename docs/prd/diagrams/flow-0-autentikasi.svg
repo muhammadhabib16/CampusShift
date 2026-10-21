@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="706" viewBox="0 0 640 706" font-family="Arial, Helvetica, sans-serif" font-size="11">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#000"/></marker></defs>
+<rect x="0" y="0" width="640" height="706" fill="#ffffff"/>
+<rect x="30.0" y="0" width="290.0" height="30" fill="#d9d9d9" stroke="#000" stroke-width="1"/>
+<text x="175.0" y="19.0" text-anchor="middle" font-weight="bold" font-size="12">Pengguna</text>
+<rect x="30.0" y="30" width="290.0" height="676.0" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="320.0" y="0" width="290.0" height="30" fill="#d9d9d9" stroke="#000" stroke-width="1"/>
+<text x="465.0" y="19.0" text-anchor="middle" font-weight="bold" font-size="12">Sistem (Aplikasi &amp; Server)</text>
+<rect x="320.0" y="30" width="290.0" height="676.0" fill="none" stroke="#000" stroke-width="1"/>
+<path d="M175.0,74.0 L175.0,88.0 L465.0,88.0 L465.0,102.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M465.0,132.0 L465.0,146.0 L175.0,146.0 L175.0,160.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M175.0,204.0 L175.0,218.0 L465.0,218.0 L465.0,232.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M360.6,265.0 L280.0,265.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="302.3" y="250.0" width="36" height="13" fill="#ffffff"/>
+<text x="320.3" y="260.0" text-anchor="middle" font-style="italic" font-weight="bold">Tidak</text>
+<path d="M70.0,265.0 L15.0,265.0 L15.0,182.0 L70.0,182.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M465.0,298.0 L465.0,326.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="467.0" y="301.0" width="18" height="13" fill="#ffffff"/>
+<text x="470.0" y="311.0" text-anchor="start" font-style="italic" font-weight="bold">Ya</text>
+<path d="M465.0,384.0 L465.0,398.0 L175.0,398.0 L175.0,412.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M175.0,456.0 L175.0,470.0 L465.0,470.0 L465.0,484.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M360.6,513.0 L280.0,513.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="302.3" y="498.0" width="36" height="13" fill="#ffffff"/>
+<text x="320.3" y="508.0" text-anchor="middle" font-style="italic" font-weight="bold">Tidak</text>
+<path d="M70.0,513.0 L15.0,513.0 L15.0,434.0 L70.0,434.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M465.0,542.0 L465.0,570.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="467.0" y="545.0" width="18" height="13" fill="#ffffff"/>
+<text x="470.0" y="555.0" text-anchor="start" font-style="italic" font-weight="bold">Ya</text>
+<path d="M465.0,614.0 L465.0,628.0 L175.0,628.0 L175.0,642.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="70.0" y="44.0" width="210.0" height="30.0" rx="15.0" fill="#e6e6e6" stroke="#000" stroke-width="1.2"/>
+<text x="175.0" y="63.0" text-anchor="middle" font-weight="bold">Buka aplikasi</text>
+<rect x="360.0" y="102.0" width="210.0" height="30.0" rx="4.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="465.0" y="121.0" text-anchor="middle">Tampilkan Splash &amp; Onboarding</text>
+<rect x="70.0" y="160.0" width="210.0" height="44.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="175.0" y="179.0" text-anchor="middle">Isi form registrasi: NIM, nama,</text>
+<text x="175.0" y="193.0" text-anchor="middle">email kampus, kata sandi</text>
+<polygon points="465.0,232.0 569.4,265.0 465.0,298.0 360.6,265.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="465.0" y="262.0" text-anchor="middle">Data valid &amp; belum</text>
+<text x="465.0" y="276.0" text-anchor="middle">terdaftar?</text>
+<rect x="70.0" y="243.0" width="210.0" height="44.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
+<text x="175.0" y="262.0" text-anchor="middle">Pesan kesalahan per field; data</text>
+<text x="175.0" y="276.0" text-anchor="middle">form tetap tersimpan</text>
+<rect x="360.0" y="326.0" width="210.0" height="58.0" rx="4.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="465.0" y="345.0" text-anchor="middle">Simpan akun (kata sandi</text>
+<text x="465.0" y="359.0" text-anchor="middle">di-hash), kembali ke halaman</text>
+<text x="465.0" y="373.0" text-anchor="middle">Login</text>
+<rect x="70.0" y="412.0" width="210.0" height="44.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="175.0" y="431.0" text-anchor="middle">Login dengan email/NIM dan kata</text>
+<text x="175.0" y="445.0" text-anchor="middle">sandi</text>
+<polygon points="465.0,484.0 569.4,513.0 465.0,542.0 360.6,513.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="465.0" y="517.0" text-anchor="middle">Kredensial benar?</text>
+<rect x="70.0" y="491.0" width="210.0" height="44.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
+<text x="175.0" y="510.0" text-anchor="middle">Pesan: Email/NIM atau kata sandi</text>
+<text x="175.0" y="524.0" text-anchor="middle">salah</text>
+<rect x="360.0" y="570.0" width="210.0" height="44.0" rx="4.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="465.0" y="589.0" text-anchor="middle">Terbitkan JWT (24 jam), simpan</text>
+<text x="465.0" y="603.0" text-anchor="middle">token di perangkat</text>
+<rect x="70.0" y="642.0" width="210.0" height="44.0" rx="22.0" fill="#e6e6e6" stroke="#000" stroke-width="1.2"/>
+<text x="175.0" y="661.0" text-anchor="middle" font-weight="bold">Masuk Beranda; dapat sunting</text>
+<text x="175.0" y="675.0" text-anchor="middle" font-weight="bold">profil atau Keluar</text>
+</svg>

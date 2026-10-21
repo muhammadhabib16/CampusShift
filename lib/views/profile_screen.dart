@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'login_screen.dart';
+import '../viewmodels/auth_view_model.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authViewModel = context.watch<AuthViewModel>();
+    final user = authViewModel.currentUser;
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
       body: CustomScrollView(
@@ -52,20 +56,22 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Mellisa Annie',
-                    style: TextStyle(
+                  Text(
+                    authViewModel.displayName,
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'NIM: 12022004123 • Universitas Indonesia',
-                    style: TextStyle(fontSize: 13, color: Colors.black45),
+                  Text(
+                    'NIM: ${user?.nim ?? '-'} • Universitas Andalas',
+                    style: const TextStyle(fontSize: 13, color: Colors.black45),
                   ),
                   const SizedBox(height: 12),
+                  // SEMENTARA: reputasi & statistik masih contoh sampai Modul 4
+                  // (Serah Terima & Reputasi) menyediakan ViewModel-nya.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: const [
@@ -127,8 +133,11 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   // Logout Button
                   GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).pushReplacement(
+                    onTap: () async {
+                      final navigator = Navigator.of(context);
+                      // Hapus token & data pengguna dari perangkat sebelum kembali ke Login
+                      await context.read<AuthViewModel>().logout();
+                      navigator.pushReplacement(
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
                       );
                     },

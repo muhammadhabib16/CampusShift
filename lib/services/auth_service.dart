@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
+import '../models/user.dart';
 
 class AuthService {
   // Gunakan IP yang tepat berdasarkan platform atau device yang dipakai
@@ -93,5 +94,17 @@ class AuthService {
   static Future<bool> isLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.containsKey('jwt_token');
+  }
+
+  /// Data pengguna yang disimpan saat login, atau null bila belum login.
+  static Future<User?> getCurrentUser() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('user_data');
+    if (raw == null) return null;
+    try {
+      return User.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (e) {
+      return null;
+    }
   }
 }

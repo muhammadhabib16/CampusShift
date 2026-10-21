@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="884" viewBox="0 0 640 884" font-family="Arial, Helvetica, sans-serif" font-size="11">
+<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#000"/></marker></defs>
+<rect x="0" y="0" width="640" height="884" fill="#ffffff"/>
+<rect x="30.0" y="0" width="193.3" height="30" fill="#d9d9d9" stroke="#000" stroke-width="1"/>
+<text x="126.7" y="19.0" text-anchor="middle" font-weight="bold" font-size="12">Pengaju</text>
+<rect x="30.0" y="30" width="193.3" height="854.0" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="223.3" y="0" width="193.3" height="30" fill="#d9d9d9" stroke="#000" stroke-width="1"/>
+<text x="320.0" y="19.0" text-anchor="middle" font-weight="bold" font-size="12">Sistem</text>
+<rect x="223.3" y="30" width="193.3" height="854.0" fill="none" stroke="#000" stroke-width="1"/>
+<rect x="416.7" y="0" width="193.3" height="30" fill="#d9d9d9" stroke="#000" stroke-width="1"/>
+<text x="513.3" y="19.0" text-anchor="middle" font-weight="bold" font-size="12">Penerima</text>
+<rect x="416.7" y="30" width="193.3" height="854.0" fill="none" stroke="#000" stroke-width="1"/>
+<path d="M126.7,102.0 L126.7,130.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M126.7,188.0 L126.7,202.0 L320.0,202.0 L320.0,216.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M250.4,245.0 L212.3,245.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="213.4" y="230.0" width="36" height="13" fill="#ffffff"/>
+<text x="231.4" y="240.0" text-anchor="middle" font-style="italic" font-weight="bold">Tidak</text>
+<path d="M41.0,245.0 L15.0,245.0 L15.0,159.0 L41.0,159.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M320.0,274.0 L320.0,302.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="322.0" y="277.0" width="18" height="13" fill="#ffffff"/>
+<text x="325.0" y="287.0" text-anchor="start" font-style="italic" font-weight="bold">Ya</text>
+<path d="M320.0,360.0 L320.0,374.0 L513.3,374.0 L513.3,388.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M443.7,421.0 L405.7,421.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="406.7" y="406.0" width="36" height="13" fill="#ffffff"/>
+<text x="424.7" y="416.0" text-anchor="middle" font-style="italic" font-weight="bold">Tidak</text>
+<path d="M513.3,454.0 L513.3,482.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="515.3" y="457.0" width="18" height="13" fill="#ffffff"/>
+<text x="518.3" y="467.0" text-anchor="start" font-style="italic" font-weight="bold">Ya</text>
+<path d="M513.3,526.0 L513.3,540.0 L126.7,540.0 L126.7,554.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M126.7,598.0 L126.7,612.0 L320.0,612.0 L320.0,626.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<path d="M389.6,666.0 L427.7,666.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="390.6" y="651.0" width="36" height="13" fill="#ffffff"/>
+<text x="408.6" y="661.0" text-anchor="middle" font-style="italic" font-weight="bold">Tidak</text>
+<path d="M320.0,706.0 L320.0,734.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="322.0" y="709.0" width="18" height="13" fill="#ffffff"/>
+<text x="325.0" y="719.0" text-anchor="start" font-style="italic" font-weight="bold">Ya</text>
+<path d="M320.0,792.0 L320.0,806.0 L126.7,806.0 L126.7,820.0" fill="none" stroke="#000" stroke-width="1.2" marker-end="url(#arr)"/>
+<rect x="41.0" y="44.0" width="171.3" height="58.0" rx="29.0" fill="#e6e6e6" stroke="#000" stroke-width="1.2"/>
+<text x="126.7" y="63.0" text-anchor="middle" font-weight="bold">Buka barang Terbuka untuk</text>
+<text x="126.7" y="77.0" text-anchor="middle" font-weight="bold">Barter, tekan Tukar</text>
+<text x="126.7" y="91.0" text-anchor="middle" font-weight="bold">(Barter)</text>
+<rect x="41.0" y="130.0" width="171.3" height="58.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="126.7" y="149.0" text-anchor="middle">Pilih barang sendiri</text>
+<text x="126.7" y="163.0" text-anchor="middle">(Available), isi cash</text>
+<text x="126.7" y="177.0" text-anchor="middle">top-up (opsional)</text>
+<polygon points="320.0,216.0 389.6,245.0 320.0,274.0 250.4,245.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="320.0" y="249.0" text-anchor="middle">Tawaran valid?</text>
+<rect x="41.0" y="230.0" width="171.3" height="30.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
+<text x="126.7" y="249.0" text-anchor="middle">Pesan validasi</text>
+<rect x="234.3" y="302.0" width="171.3" height="58.0" rx="4.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="320.0" y="321.0" text-anchor="middle">Simpan tawaran (Pending);</text>
+<text x="320.0" y="335.0" text-anchor="middle">Barter Alert via</text>
+<text x="320.0" y="349.0" text-anchor="middle">sinkronisasi</text>
+<polygon points="513.3333333333334,388.0 582.9333333333334,421.0 513.3333333333334,454.0 443.73333333333335,421.0" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="513.3" y="418.0" text-anchor="middle">Setuju dengan</text>
+<text x="513.3" y="432.0" text-anchor="middle">tawaran?</text>
+<rect x="234.3" y="392.0" width="171.3" height="58.0" rx="4.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
+<text x="320.0" y="411.0" text-anchor="middle">Status Rejected (ditolak)</text>
+<text x="320.0" y="425.0" text-anchor="middle">atau Negotiating (tawar</text>
+<text x="320.0" y="439.0" text-anchor="middle">balik; konfirmasi direset)</text>
+<rect x="427.7" y="482.0" width="171.3" height="44.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="513.3" y="501.0" text-anchor="middle">Tekan Setuju &amp; Kunci</text>
+<text x="513.3" y="515.0" text-anchor="middle">Kesepakatan</text>
+<rect x="41.0" y="554.0" width="171.3" height="44.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2"/>
+<text x="126.7" y="573.0" text-anchor="middle">Tekan Setuju &amp; Kunci</text>
+<text x="126.7" y="587.0" text-anchor="middle">Kesepakatan</text>
+<polygon points="320.0,626.0 389.6,666.0 320.0,706.0 250.4,666.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="320.0" y="656.0" text-anchor="middle">Dua konfirmasi</text>
+<text x="320.0" y="670.0" text-anchor="middle">&amp; barang masih</text>
+<text x="320.0" y="684.0" text-anchor="middle">tersedia?</text>
+<rect x="427.7" y="644.0" width="171.3" height="44.0" rx="4.0" fill="#ffffff" stroke="#000" stroke-width="1.2" stroke-dasharray="5,3"/>
+<text x="513.3" y="663.0" text-anchor="middle">Penguncian gagal; tawaran</text>
+<text x="513.3" y="677.0" text-anchor="middle">Rejected otomatis</text>
+<rect x="234.3" y="734.0" width="171.3" height="58.0" rx="4.0" fill="#f2f2f2" stroke="#000" stroke-width="1.2"/>
+<text x="320.0" y="753.0" text-anchor="middle">Locked: kedua barang</text>
+<text x="320.0" y="767.0" text-anchor="middle">Reserved; tawaran lain</text>
+<text x="320.0" y="781.0" text-anchor="middle">ditolak</text>
+<rect x="41.0" y="820.0" width="171.3" height="44.0" rx="22.0" fill="#e6e6e6" stroke="#000" stroke-width="1.2"/>
+<text x="126.7" y="839.0" text-anchor="middle" font-weight="bold">Ajukan jadwal pertemuan,</text>
+<text x="126.7" y="853.0" text-anchor="middle" font-weight="bold">lanjut ke Flow 5</text>
+</svg>

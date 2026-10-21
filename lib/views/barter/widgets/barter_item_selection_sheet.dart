@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../utils/formatters.dart';
+import '../../../viewmodels/barter_view_model.dart';
 import '../barter_negotiation_screen.dart';
+import 'barter_visuals.dart';
 
-class BarterItemSelectionSheet extends StatefulWidget {
+class BarterItemSelectionSheet extends StatelessWidget {
   const BarterItemSelectionSheet({super.key});
-
-  @override
-  State<BarterItemSelectionSheet> createState() => _BarterItemSelectionSheetState();
 
   static void show(BuildContext context) {
     showModalBottomSheet(
@@ -15,37 +16,11 @@ class BarterItemSelectionSheet extends StatefulWidget {
       builder: (context) => const BarterItemSelectionSheet(),
     );
   }
-}
-
-class _BarterItemSelectionSheetState extends State<BarterItemSelectionSheet> {
-  int _selectedIndex = 0;
-
-  final List<Map<String, dynamic>> _myItems = [
-    {
-      'name': 'Kalkulator Casio FX-991EX',
-      'price': 'Rp 195.000',
-      'condition': 'Baik',
-      'conditionColor': Colors.green,
-      'icon': Icons.calculate,
-    },
-    {
-      'name': 'iPad Air 4 Case Navy Blue',
-      'price': 'Rp 45.000',
-      'condition': 'Cukup',
-      'conditionColor': Colors.orange,
-      'icon': Icons.tablet_mac,
-    },
-    {
-      'name': 'Meja Lipat Belajar Minimalis',
-      'price': 'Rp 120.000',
-      'condition': 'Baik',
-      'conditionColor': Colors.green,
-      'icon': Icons.desk,
-    },
-  ];
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<BarterViewModel>();
+    final myItems = viewModel.myItems;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -85,26 +60,18 @@ class _BarterItemSelectionSheetState extends State<BarterItemSelectionSheet> {
           ),
           const SizedBox(height: 24),
           RadioGroup<int>(
-            groupValue: _selectedIndex,
-            onChanged: (value) {
-              setState(() {
-                _selectedIndex = value!;
-              });
-            },
+            groupValue: viewModel.selectedIndex,
+            onChanged: (value) => viewModel.selectItem(value!),
             child: ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _myItems.length,
+              itemCount: myItems.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final item = _myItems[index];
-                final isSelected = _selectedIndex == index;
+                final item = myItems[index];
+                final isSelected = viewModel.selectedIndex == index;
                 return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedIndex = index;
-                    });
-                  },
+                  onTap: () => viewModel.selectItem(index),
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -124,7 +91,7 @@ class _BarterItemSelectionSheetState extends State<BarterItemSelectionSheet> {
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(item['icon'], color: Colors.grey.shade400, size: 28),
+                          child: Icon(BarterVisuals.iconForCategory(item.category), color: Colors.grey.shade400, size: 28),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -132,7 +99,7 @@ class _BarterItemSelectionSheetState extends State<BarterItemSelectionSheet> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item['name'],
+                                item.name,
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -143,7 +110,7 @@ class _BarterItemSelectionSheetState extends State<BarterItemSelectionSheet> {
                               Row(
                                 children: [
                                   Text(
-                                    item['price'],
+                                    formatRupiah(item.price),
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: Colors.black54,
@@ -151,11 +118,11 @@ class _BarterItemSelectionSheetState extends State<BarterItemSelectionSheet> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    item['condition'],
+                                    item.condition,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      color: item['conditionColor'],
+                                      color: BarterVisuals.colorForCondition(item.condition),
                                     ),
                                   ),
                                 ],
@@ -176,14 +143,16 @@ class _BarterItemSelectionSheetState extends State<BarterItemSelectionSheet> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () {
-              // Ambil Navigator sebelum sheet ditutup, karena context sheet tidak lagi aktif setelah pop
-              final navigator = Navigator.of(context);
-              navigator.pop(); // Close sheet
-              navigator.push(
-                MaterialPageRoute(builder: (context) => const BarterNegotiationScreen()),
-              );
-            },
+            onPressed: viewModel.selectedItem == null
+                ? null
+                : () {
+                    // Ambil Navigator sebelum sheet ditutup, karena context sheet tidak lagi aktif setelah pop
+                    final navigator = Navigator.of(context);
+                    navigator.pop(); // Close sheet
+                    navigator.push(
+                      MaterialPageRoute(builder: (context) => const BarterNegotiationScreen()),
+                    );
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0D9488),
               minimumSize: const Size(double.infinity, 50),

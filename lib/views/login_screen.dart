@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'register_screen.dart';
 import 'main_screen.dart';
-import '../services/auth_service.dart';
+import '../viewmodels/auth_view_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,7 +14,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
-  bool _isLoading = false;
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -31,44 +32,38 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email dan Password tidak boleh kosong')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final result = await AuthService.login(
+    final authViewModel = context.read<AuthViewModel>();
+    final success = await authViewModel.login(
       email: _emailController.text,
       password: _passwordController.text,
     );
 
-    setState(() {
-      _isLoading = false;
-    });
-
     if (!mounted) return;
 
-    if (result['success']) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Login berhasil')),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(authViewModel.message ?? '')),
+    );
+    if (success) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Login gagal')),
       );
     }
   }
 
+  // SEMENTARA untuk pengujian UI tanpa backend. Tombolnya hanya tampil saat
+  // mode debug (flutter run), sehingga tidak ikut ke build rilis.
+  void _bypassLogin() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Mode uji: masuk tanpa server')),
+    );
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const MainScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthViewModel>().isLoading;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -209,14 +204,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
+                  onPressed: isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D9488),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  child: _isLoading 
+                  child: isLoading
                     ? const SizedBox(
                         height: 20, 
                         width: 20, 
@@ -252,6 +247,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+              if (kDebugMode) ...[
+                const SizedBox(height: 16),
+                Center(
+                  child: OutlinedButton.icon(
+                    onPressed: _bypassLogin,
+                    icon: const Icon(Icons.bug_report_outlined, size: 18),
+                    label: const Text('Masuk tanpa server (mode uji)'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange.shade800,
+                      side: BorderSide(color: Colors.orange.shade300),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

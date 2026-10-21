@@ -60,3 +60,8 @@ linux/flutter/ephemeral/
 
 # Web
 web/build/
+
+# File sementara Office & Windows
+~$*
+desktop.ini
+Thumbs.db
