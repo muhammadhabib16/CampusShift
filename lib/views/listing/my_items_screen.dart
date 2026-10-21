@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/item_model.dart';
 import '../../viewmodels/item_viewmodel.dart';
-import 'edit_listing_screen.dart'; // Import layar edit
+import 'edit_listing_screen.dart';
 
 class MyItemsScreen extends StatefulWidget {
   const MyItemsScreen({super.key});
@@ -115,6 +115,10 @@ class _MyItemsScreenState extends State<MyItemsScreen>
     );
     final viewModel = Provider.of<ItemViewModel>(context, listen: false);
 
+    // CEK ATURAN BR-04: Edit dan Hapus hanya boleh jika statusnya Available atau Archived
+    bool canEditOrDelete =
+        item.status == 'Available' || item.status == 'Archived';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -171,67 +175,76 @@ class _MyItemsScreenState extends State<MyItemsScreen>
               ),
             ],
           ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                TextButton.icon(
-                  onPressed: () =>
-                      _showDeleteDialog(context, viewModel, item.id),
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.red,
-                    size: 16,
-                  ),
-                  label: const Text(
-                    'Hapus',
-                    style: TextStyle(color: Colors.red, fontSize: 12),
-                  ),
-                ),
-                if (item.status == 'Available')
+
+          // Render Row Aksi hanya jika barang BUKAN berstatus Reserved atau Completed (Sesuai BR-04)
+          if (canEditOrDelete) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4.0,
+                vertical: 4.0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Tombol Hapus (Sesuai BR-04)
                   TextButton.icon(
-                    onPressed: () {
-                      viewModel.changeItemStatus(item.id, 'Archived');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Listing diarsipkan.')),
-                      );
-                    },
+                    onPressed: () =>
+                        _showDeleteDialog(context, viewModel, item.id),
                     icon: const Icon(
-                      Icons.archive_outlined,
-                      color: Colors.orange,
+                      Icons.delete_outline,
+                      color: Colors.red,
                       size: 16,
                     ),
                     label: const Text(
-                      'Arsipkan',
-                      style: TextStyle(color: Colors.orange, fontSize: 12),
-                    ),
-                  )
-                else if (item.status == 'Archived')
-                  TextButton.icon(
-                    onPressed: () {
-                      viewModel.changeItemStatus(item.id, 'Available');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Listing diaktifkan kembali.'),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.unarchive_outlined,
-                      color: Colors.green,
-                      size: 16,
-                    ),
-                    label: const Text(
-                      'Aktifkan',
-                      style: TextStyle(color: Colors.green, fontSize: 12),
+                      'Hapus',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
                     ),
                   ),
-                if (item.status != 'Completed')
+
+                  // Tombol Arsipkan / Aktifkan
+                  if (item.status == 'Available')
+                    TextButton.icon(
+                      onPressed: () {
+                        viewModel.changeItemStatus(item.id, 'Archived');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Listing diarsipkan.')),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.archive_outlined,
+                        color: Colors.orange,
+                        size: 16,
+                      ),
+                      label: const Text(
+                        'Arsipkan',
+                        style: TextStyle(color: Colors.orange, fontSize: 12),
+                      ),
+                    )
+                  else if (item.status == 'Archived')
+                    TextButton.icon(
+                      onPressed: () {
+                        viewModel.changeItemStatus(item.id, 'Available');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Listing diaktifkan kembali.'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.unarchive_outlined,
+                        color: Colors.green,
+                        size: 16,
+                      ),
+                      label: const Text(
+                        'Aktifkan',
+                        style: TextStyle(color: Colors.green, fontSize: 12),
+                      ),
+                    ),
+
+                  // Tombol Edit (Sesuai BR-04)
                   TextButton.icon(
                     onPressed: () {
-                      // Navigasi ke Halaman Edit dengan membawa data barang saat ini
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -249,9 +262,28 @@ class _MyItemsScreenState extends State<MyItemsScreen>
                       style: TextStyle(color: Colors.blue, fontSize: 12),
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ] else ...[
+            // Tampilan info tanpa tombol aksi untuk barang Reserved/Completed
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Center(
+                child: Text(
+                  item.status == 'Reserved'
+                      ? 'Barang sedang dalam kesepakatan (Tidak dapat diubah/dihapus)'
+                      : 'Transaksi telah selesai (Riwayat dikunci)',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
