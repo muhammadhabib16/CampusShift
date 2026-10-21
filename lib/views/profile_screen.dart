@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'login_screen.dart';
+import 'handover/serah_terima_qr_screen.dart';
 import '../viewmodels/auth_view_model.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -120,6 +121,17 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   _buildMenuGroup([
                     ProfileMenuItem(icon: Icons.edit_rounded, label: 'Edit Profil', color: const Color(0xFF0D9488)),
+                    ProfileMenuItem(
+                      icon: Icons.qr_code_2_rounded,
+                      label: 'Serah Terima QR (Modul 4)',
+                      color: const Color(0xFF0D9488),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SerahTerimaQrScreen()),
+                        );
+                      },
+                    ),
                     ProfileMenuItem(icon: Icons.list_alt_rounded, label: 'Listing Saya', color: Colors.blue),
                     ProfileMenuItem(icon: Icons.receipt_long_rounded, label: 'Riwayat Transaksi', color: Colors.orange),
                     ProfileMenuItem(icon: Icons.swap_horiz_rounded, label: 'Barter Saya', color: Colors.purple),
@@ -250,7 +262,7 @@ class ProfileScreen extends StatelessWidget {
               color: Colors.black26,
               size: 20,
             ),
-            onTap: () {},
+            onTap: item.onTap,
           );
         },
       ),
@@ -262,6 +274,12 @@ class ProfileMenuItem {
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
-  const ProfileMenuItem({required this.icon, required this.label, required this.color});
+  const ProfileMenuItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
 }

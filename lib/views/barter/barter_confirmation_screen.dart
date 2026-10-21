@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/barter_deal.dart';
 import '../../utils/formatters.dart';
 import '../../viewmodels/barter_view_model.dart';
+import '../handover/serah_terima_qr_screen.dart';
 import 'widgets/barter_visuals.dart';
 
 /// Detail Tawaran & Konfirmasi Kesepakatan (FR-13 Dual-Confirmation).
@@ -199,7 +200,25 @@ class BarterConfirmationScreen extends StatelessWidget {
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
             )
-          else if (deal.myConfirmed && !isLocked && deal.status != 'Selesai')
+          else if (isLocked)
+            // Lanjut ke serah terima (Modul 4) setelah kesepakatan terkunci
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SerahTerimaQrScreen()),
+              ),
+              icon: const Icon(Icons.qr_code_2_rounded, color: Color(0xFF0D9488)),
+              label: const Text(
+                'Buka Serah Terima QR',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+                side: const BorderSide(color: Color(0xFF0D9488)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            )
+          else if (deal.myConfirmed && deal.status != 'Selesai')
             // BR-18: setelah satu pihak mengonfirmasi
             Text(
               'Menunggu konfirmasi ${deal.partnerName}',
