@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'services/barter_service.dart';
 import 'services/home_service.dart';
@@ -8,7 +9,10 @@ import 'viewmodels/home_view_model.dart';
 import 'viewmodels/item_viewmodel.dart';
 import 'views/splash_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Format tanggal Indonesia untuk jadwal pertemuan (Modul 2).
+  await initializeDateFormatting('id_ID', null);
   runApp(
     // ViewModel didaftarkan di atas MaterialApp agar dapat diakses semua layar.
     // Modul lain menambahkan ViewModel-nya di daftar ini.

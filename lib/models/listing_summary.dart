@@ -8,6 +8,8 @@ class ListingSummary {
   final String category; // Buku & Referensi, Furnitur Kos, Elektronik, Alat Perkuliahan
   final String faculty;
   final int price;
+  final int ownerId;
+  final String ownerName;
 
   const ListingSummary({
     required this.id,
@@ -15,6 +17,8 @@ class ListingSummary {
     required this.category,
     required this.faculty,
     required this.price,
+    required this.ownerId,
+    required this.ownerName,
   });
 
   factory ListingSummary.fromJson(Map<String, dynamic> json) {
@@ -24,6 +28,8 @@ class ListingSummary {
       category: json['category'] as String,
       faculty: json['faculty'] as String,
       price: (json['price'] as num).toInt(),
+      ownerId: (json['owner_id'] as num).toInt(),
+      ownerName: json['owner_name'] as String,
     );
   }
 
@@ -33,5 +39,7 @@ class ListingSummary {
         'category': category,
         'faculty': faculty,
         'price': price,
+        'owner_id': ownerId,
+        'owner_name': ownerName,
       };
 }
