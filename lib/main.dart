@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import 'views/splash_screen.dart';
+import 'views/listing/my_items_screen.dart';
+import 'viewmodels/item_viewmodel.dart';
+import 'views/listing/catalog_screen.dart';
+import 'services/notification_service.dart'; // Import service notifikasi
 
-void main() {
-  runApp(const MainApp());
+void main() async {
+  // Wajib ditambahkan jika menggunakan proses async di main()
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi notifikasi lokal
+  await NotificationService.init();
+
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => ItemViewModel())],
+      child: const MainApp(),
+    ),
+  );
 }
 
 class MainApp extends StatelessWidget {
@@ -21,7 +36,8 @@ class MainApp extends StatelessWidget {
           primary: const Color(0xFF0D9488),
         ),
       ),
-      home: const SplashScreen(),
+      // Bypass  ke CatalogScreen agar bisa mencoba Tambah Listing
+      home: const CatalogScreen(),
     );
   }
 }
