@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'login_screen.dart';
+import 'handover/serah_terima_qr_screen.dart';
+import '../viewmodels/auth_view_model.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authViewModel = context.watch<AuthViewModel>();
+    final user = authViewModel.currentUser;
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFB),
       body: CustomScrollView(
@@ -52,20 +57,22 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Mellisa Annie',
-                    style: TextStyle(
+                  Text(
+                    authViewModel.displayName,
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'NIM: 12022004123 • Universitas Indonesia',
-                    style: TextStyle(fontSize: 13, color: Colors.black45),
+                  Text(
+                    'NIM: ${user?.nim ?? '-'} • Universitas Andalas',
+                    style: const TextStyle(fontSize: 13, color: Colors.black45),
                   ),
                   const SizedBox(height: 12),
+                  // SEMENTARA: reputasi & statistik masih contoh sampai Modul 4
+                  // (Serah Terima & Reputasi) menyediakan ViewModel-nya.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: const [
@@ -114,6 +121,17 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   _buildMenuGroup([
                     ProfileMenuItem(icon: Icons.edit_rounded, label: 'Edit Profil', color: const Color(0xFF0D9488)),
+                    ProfileMenuItem(
+                      icon: Icons.qr_code_2_rounded,
+                      label: 'Serah Terima QR (Modul 4)',
+                      color: const Color(0xFF0D9488),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SerahTerimaQrScreen()),
+                        );
+                      },
+                    ),
                     ProfileMenuItem(icon: Icons.list_alt_rounded, label: 'Listing Saya', color: Colors.blue),
                     ProfileMenuItem(icon: Icons.receipt_long_rounded, label: 'Riwayat Transaksi', color: Colors.orange),
                     ProfileMenuItem(icon: Icons.swap_horiz_rounded, label: 'Barter Saya', color: Colors.purple),
@@ -127,8 +145,11 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   // Logout Button
                   GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).pushReplacement(
+                    onTap: () async {
+                      final navigator = Navigator.of(context);
+                      // Hapus token & data pengguna dari perangkat sebelum kembali ke Login
+                      await context.read<AuthViewModel>().logout();
+                      navigator.pushReplacement(
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
                       );
                     },
@@ -241,7 +262,7 @@ class ProfileScreen extends StatelessWidget {
               color: Colors.black26,
               size: 20,
             ),
-            onTap: () {},
+            onTap: item.onTap,
           );
         },
       ),
@@ -253,6 +274,12 @@ class ProfileMenuItem {
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
-  const ProfileMenuItem({required this.icon, required this.label, required this.color});
+  const ProfileMenuItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
 }

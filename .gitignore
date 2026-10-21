@@ -3,7 +3,10 @@
 *.log
 *.pyc
 *.swp
+*.swo
+*~
 .DS_Store
+Thumbs.db
 .atom/
 .buildlog/
 .history
@@ -11,42 +14,64 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# IntelliJ / Android Studio
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# VS Code
+.vscode/
 
-# Flutter/Dart/Pub related
+# Flutter / Dart / Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
+build/
+**/build/
 /coverage/
+coverage/
 
-# Symbolication related
+# Symbolication & Obfuscation
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# Android Studio & Gradle build artifacts
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/android/app/build/
+/android/build/
+.gradle/
+android/.gradle/
+android/.kotlin/
+/android/local.properties
+/android/key.properties
+*.keystore
+*.jks
+
+# Logs, errors, and crash dumps
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*-error.txt
+gradle-error.txt
+hs_err_pid*
 
 # Widget Preview related
 .widget_preview/
-.env*
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
 
 # Windows
 windows/flutter/ephemeral/
@@ -54,9 +79,27 @@ windows/flutter/ephemeral/generated_config.cmake
 
 # macOS
 macos/Flutter/ephemeral/
+macos/Pods/
 
 # Linux
 linux/flutter/ephemeral/
 
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/ephemeral/
+
 # Web
 web/build/
+
+# File sementara Office & Windows
+~$*
+desktop.ini
+Thumbs.db
+
+# Dokumen & Referensi Lokal Modul
+kebutuhan modul fadel/

@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/barter_deal.dart';
+import '../../viewmodels/barter_view_model.dart';
+import 'barter_confirmation_screen.dart';
+import 'widgets/barter_visuals.dart';
 
 class BarterListScreen extends StatelessWidget {
   const BarterListScreen({super.key});
@@ -35,8 +40,8 @@ class BarterListScreen extends StatelessWidget {
         ),
         body: const TabBarView(
           children: [
-            _BarterList(type: 'dikirim'),
-            _BarterList(type: 'diterima'),
+            _BarterList(sent: true),
+            _BarterList(sent: false),
           ],
         ),
       ),
@@ -45,32 +50,19 @@ class BarterListScreen extends StatelessWidget {
 }
 
 class _BarterList extends StatelessWidget {
-  final String type;
-  const _BarterList({required this.type});
+  final bool sent;
+  const _BarterList({required this.sent});
 
   @override
   Widget build(BuildContext context) {
-    // Dummy data based on the screenshot
-    final List<Map<String, dynamic>> barters = [
-      {
-        'user_name': 'Farhan Wijaya',
-        'status': 'Menunggu',
-        'status_color': Colors.orange,
-        'date': 'Hari ini, 10:15 WIB',
-      },
-      {
-        'user_name': 'Sarah Amanda',
-        'status': 'Diterima',
-        'status_color': Colors.green,
-        'date': 'Kemarin, 14:30 WIB',
-      },
-      {
-        'user_name': 'Rian Hidayat',
-        'status': 'Selesai',
-        'status_color': Colors.green,
-        'date': '12 Okt 2026',
-      },
-    ];
+    final viewModel = context.watch<BarterViewModel>();
+    final barters = sent ? viewModel.sentDeals : viewModel.receivedDeals;
+
+    if (barters.isEmpty) {
+      return const Center(
+        child: Text('Belum ada tawaran', style: TextStyle(color: Colors.grey)),
+      );
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -78,12 +70,12 @@ class _BarterList extends StatelessWidget {
       separatorBuilder: (context, index) => const Divider(height: 24, color: Color(0xFFEEEEEE)),
       itemBuilder: (context, index) {
         final barter = barters[index];
-        return _buildBarterItem(barter);
+        return _buildBarterItem(context, barter);
       },
     );
   }
 
-  Widget _buildBarterItem(Map<String, dynamic> data) {
+  Widget _buildBarterItem(BuildContext context, BarterDeal data) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -100,7 +92,7 @@ class _BarterList extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  data['user_name'],
+                  data.partnerName,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -110,9 +102,9 @@ class _BarterList extends StatelessWidget {
               ],
             ),
             Text(
-              data['status'],
+              data.status,
               style: TextStyle(
-                color: data['status_color'],
+                color: BarterVisuals.colorForDealStatus(data.status),
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -124,12 +116,15 @@ class _BarterList extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildAssetIcon('Aset Kamu', Icons.watch),
+            _buildAssetIcon(data.myItem.name, BarterVisuals.iconForCategory(data.myItem.category)),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Icon(Icons.swap_horiz, color: Colors.grey.shade400, size: 20),
             ),
-            _buildAssetIcon('Aset Lawan', Icons.phone_android),
+            _buildAssetIcon(
+              data.partnerItem.name,
+              BarterVisuals.iconForCategory(data.partnerItem.category),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -138,16 +133,18 @@ class _BarterList extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              data['date'],
+              data.dateLabel,
               style: const TextStyle(
                 color: Colors.grey,
                 fontSize: 12,
               ),
             ),
             GestureDetector(
-              onTap: () {
-                // Navigate to detail
-              },
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BarterConfirmationScreen(dealId: data.id),
+                ),
+              ),
               child: const Row(
                 children: [
                   Text(
@@ -169,26 +166,32 @@ class _BarterList extends StatelessWidget {
   }
 
   Widget _buildAssetIcon(String label, IconData icon) {
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: Colors.grey.shade600, size: 24),
           ),
-          child: Icon(icon, color: Colors.grey.shade600, size: 24),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.black87,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.black87,
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -1,17 +1,20 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io' show Platform;
+import '../models/user.dart';
 
 class AuthService {
-  // Gunakan IP yang tepat berdasarkan platform atau device yang dipakai
-  // 10.0.2.2 untuk emulator Android
-  // localhost (127.0.0.1) untuk iOS simulator
+  // kIsWeb aman untuk semua platform (Android, iOS, Web).
+  // - Flutter Web (Chrome): akses langsung ke localhost PC.
+  // - Android Emulator: gunakan 10.0.2.2 (loopback ke host PC).
+  // - Android Fisik (USB): jalankan `adb reverse tcp:5000 tcp:5000` terlebih dahulu.
   static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api/auth';
+    if (kIsWeb) {
+      return 'http://127.0.0.1:5000/api/auth';
     }
-    return 'http://127.0.0.1:3000/api/auth';
+    // Android emulator menggunakan 10.0.2.2 untuk mengakses localhost PC
+    return 'http://10.0.2.2:5000/api/auth';
   }
 
   static Future<Map<String, dynamic>> register({
@@ -90,8 +93,26 @@ class AuthService {
     await prefs.remove('user_data');
   }
 
+  /// Token JWT yang tersimpan, atau null bila belum login.
+  static Future<String?> getToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('jwt_token');
+  }
+
   static Future<bool> isLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.containsKey('jwt_token');
+  }
+
+  /// Data pengguna yang disimpan saat login, atau null bila belum login.
+  static Future<User?> getCurrentUser() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('user_data');
+    if (raw == null) return null;
+    try {
+      return User.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (e) {
+      return null;
+    }
   }
 }

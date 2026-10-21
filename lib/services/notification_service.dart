@@ -20,7 +20,7 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _notificationsPlugin.initialize(initSettings);
+    await _notificationsPlugin.initialize(settings: initSettings);
   }
 
   // Simulasi Notifikasi Stale Alert (FR-05)
@@ -44,10 +44,10 @@ class NotificationService {
     await Future.delayed(const Duration(seconds: 5));
 
     await _notificationsPlugin.show(
-      0, // ID notifikasi
-      'Listing Belum Laku! 💡',
-      'Barang "$itemName" milikmu sudah 14 hari belum ada peminat. Coba turunin harganya atau update deskripsi!',
-      platformDetails,
+      id: 0, // ID notifikasi
+      title: 'Listing Belum Laku! 💡',
+      body: 'Barang "$itemName" milikmu sudah 14 hari belum ada peminat. Coba turunin harganya atau update deskripsi!',
+      notificationDetails: platformDetails,
     );
   }
 }

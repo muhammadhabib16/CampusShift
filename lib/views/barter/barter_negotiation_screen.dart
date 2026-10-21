@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../utils/formatters.dart';
+import '../../viewmodels/barter_view_model.dart';
+import 'widgets/barter_visuals.dart';
 
 class BarterNegotiationScreen extends StatefulWidget {
   const BarterNegotiationScreen({super.key});
@@ -8,45 +12,54 @@ class BarterNegotiationScreen extends StatefulWidget {
 }
 
 class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
-  final TextEditingController _cashAdditionController = TextEditingController(text: '55000');
+  late final TextEditingController _cashAdditionController;
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
 
-  void _submitProposal() async {
-    // 1. Input/Event: User menekan tombol Kirim Penawaran
-    
-    // 3. Validation: Memeriksa validitas form
-    if (_formKey.currentState!.validate()) {
-      // 2. State: Mengubah state form menjadi loading
-      setState(() {
-        _isLoading = true;
-      });
+  @override
+  void initState() {
+    super.initState();
+    // Nilai awal top-up diambil dari ViewModel (menutup selisih harga).
+    _cashAdditionController = TextEditingController(
+      text: context.read<BarterViewModel>().suggestedTopUp.toString(),
+    );
+  }
 
-      // Simulasi proses pengiriman ke server
-      await Future.delayed(const Duration(seconds: 2));
+  @override
+  void dispose() {
+    _cashAdditionController.dispose();
+    super.dispose();
+  }
 
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+  Future<void> _submitProposal() async {
+    // 1. Validasi form memakai aturan dari ViewModel
+    if (!_formKey.currentState!.validate()) return;
 
-        // 4. Feedback: Menampilkan pesan sukses
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Penawaran Barter Berhasil Dikirim!'),
-            backgroundColor: Color(0xFF0D9488),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+    // 2. Kirim lewat ViewModel; state loading dikelola ViewModel
+    final viewModel = context.read<BarterViewModel>();
+    final success = await viewModel.submitProposal(_cashAdditionController.text);
+    if (!mounted) return;
 
-        // 5. Navigation: Navigasi kembali ke layar sebelumnya / menuju list barter
-        Navigator.pop(context); // Kembali ke list/home
-      }
-    }
+    // 3. Feedback & navigasi
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? 'Penawaran Barter Berhasil Dikirim!'
+            : viewModel.errorMessage ?? 'Gagal mengirim penawaran'),
+        backgroundColor: success ? const Color(0xFF0D9488) : Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    if (success) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<BarterViewModel>();
+    final offeredItem = viewModel.selectedItem;
+    final targetItem = viewModel.targetItem;
+    final difference = viewModel.priceDifference;
+    final isSubmitting = viewModel.isSubmitting;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -92,17 +105,17 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
                   children: [
                     _buildItemColumn(
                       'Barang Kamu',
-                      'Kalkulator Casio FX-991EX',
-                      'Rp 195.000',
-                      Icons.calculate,
+                      offeredItem?.name ?? '-',
+                      offeredItem == null ? '-' : formatRupiah(offeredItem.price),
+                      BarterVisuals.iconForCategory(offeredItem?.category ?? ''),
                       const Color(0xFF0D9488),
                     ),
                     const Icon(Icons.swap_horiz, color: Color(0xFF0D9488), size: 28),
                     _buildItemColumn(
                       'Barang Mereka',
-                      'Buku Fisika Dasar',
-                      'Rp 250.000',
-                      Icons.menu_book,
+                      targetItem?.name ?? '-',
+                      targetItem == null ? '-' : formatRupiah(targetItem.price),
+                      BarterVisuals.iconForCategory(targetItem?.category ?? ''),
                       Colors.orange,
                     ),
                   ],
@@ -117,11 +130,13 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
                     'Selisih Harga:',
                     style: TextStyle(fontSize: 14, color: Colors.black54),
                   ),
-                  const Text(
-                    '- Rp 55.000',
+                  Text(
+                    difference > 0
+                        ? '- ${formatRupiah(difference)}'
+                        : '+ ${formatRupiah(-difference)}',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.red,
+                      color: difference > 0 ? Colors.red : Colors.green,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -161,42 +176,7 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
                     borderSide: const BorderSide(color: Colors.red),
                   ),
                 ),
-                validator: (value) {
-                  // 3. Validation Rules
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Selisih tunai tidak boleh kosong';
-                  }
-                  final intValue = int.tryParse(value);
-                  if (intValue == null) {
-                    return 'Hanya boleh berisi angka';
-                  }
-                  if (intValue < 0) {
-                    return 'Tidak boleh bernilai negatif';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'PESAN PENAWARAN',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Chat bubbles
-              _buildChatBubble(
-                text: 'Halo, bukunya masih mulus. Mau nambah selisih tunai gak untuk penawarannya?',
-                time: '10:02',
-                isMe: false,
-              ),
-              const SizedBox(height: 16),
-              _buildChatBubble(
-                text: 'Boleh, ini saya tambah tunai sesuai taksiran harga.',
-                time: '10:05',
-                isMe: true,
+                validator: viewModel.validateTopUp,
               ),
             ],
           ),
@@ -206,7 +186,7 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
-            onPressed: _isLoading ? null : _submitProposal,
+            onPressed: isSubmitting ? null : _submitProposal,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0D9488),
               disabledBackgroundColor: Colors.grey.shade300,
@@ -215,7 +195,7 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: _isLoading
+            child: isSubmitting
                 ? const SizedBox(
                     width: 24,
                     height: 24,
@@ -263,44 +243,6 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
             style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildChatBubble({required String text, required String time, required bool isMe}) {
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isMe ? const Color(0xFFE6F4F1) : Colors.grey.shade100,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: isMe ? const Radius.circular(12) : const Radius.circular(0),
-            bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(12),
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                text,
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              time,
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
-            ),
-          ],
-        ),
       ),
     );
   }
