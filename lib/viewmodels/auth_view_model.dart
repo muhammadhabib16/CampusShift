@@ -10,6 +10,7 @@ class AuthViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _message;
   User? _currentUser;
+  String? _token;
 
   bool get isLoading => _isLoading;
 
@@ -18,6 +19,9 @@ class AuthViewModel extends ChangeNotifier {
 
   /// Pengguna yang sedang login; null bila belum login (atau mode uji debug).
   User? get currentUser => _currentUser;
+
+  /// Token JWT untuk header `Authorization` pada service modul lain.
+  String? get token => _token;
 
   /// Nama untuk sapaan di layar; memakai label umum bila data belum ada.
   String get displayName {
@@ -30,6 +34,7 @@ class AuthViewModel extends ChangeNotifier {
   Future<bool> restoreSession() async {
     final loggedIn = await AuthService.isLoggedIn();
     _currentUser = loggedIn ? await AuthService.getCurrentUser() : null;
+    _token = loggedIn ? await AuthService.getToken() : null;
     notifyListeners();
     return loggedIn;
   }
@@ -45,7 +50,10 @@ class AuthViewModel extends ChangeNotifier {
     final result = await AuthService.login(email: email, password: password);
     final success = result['success'] == true;
     _message = result['message'] ?? (success ? 'Login berhasil' : 'Login gagal');
-    if (success) _currentUser = await AuthService.getCurrentUser();
+    if (success) {
+      _currentUser = await AuthService.getCurrentUser();
+      _token = await AuthService.getToken();
+    }
     _setLoading(false);
     return success;
   }
@@ -81,6 +89,7 @@ class AuthViewModel extends ChangeNotifier {
     await AuthService.logout();
     _message = null;
     _currentUser = null;
+    _token = null;
     notifyListeners();
   }
 

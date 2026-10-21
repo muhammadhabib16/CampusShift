@@ -93,6 +93,12 @@ class AuthService {
     await prefs.remove('user_data');
   }
 
+  /// Token JWT yang tersimpan, atau null bila belum login.
+  static Future<String?> getToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('jwt_token');
+  }
+
   static Future<bool> isLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.containsKey('jwt_token');
