@@ -3,6 +3,8 @@ import '../../models/meetup.dart';
 import '../../services/maps_launcher_service.dart';
 import '../../services/meetup_repository.dart';
 import 'meetup_detail_screen.dart';
+import '../handover/serah_terima_qr_screen.dart';
+import '../handover/qr_scanner_screen.dart';
 import 'meetup_form_screen.dart';
 
 class MyMeetupsScreen extends StatefulWidget {
@@ -502,6 +504,33 @@ class _MyMeetupsScreenState extends State<MyMeetupsScreen> with SingleTickerProv
 
                   // Aksi Khusus Status Dikonfirmasi (AC-11: Pada Dikonfirmasi HANYA tersedia opsi Batalkan)
                   if (meetup.isDikonfirmasi) ...[
+                    // Tombol Serah Terima QR (Modul 4)
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        if (meetup.ownerId == MeetupRepository.currentUserId) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SerahTerimaQrScreen(meetup: meetup),
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => QrScannerScreen(targetMeetup: meetup),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.qr_code_2_rounded, size: 16),
+                      label: const Text('QR Serah Terima', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF0D9488),
+                        side: const BorderSide(color: Color(0xFF0D9488)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     // Tombol Buka Rute Google Maps (FR-09 & AC-12)
                     Expanded(
                       child: ElevatedButton.icon(

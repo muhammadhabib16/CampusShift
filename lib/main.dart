@@ -14,6 +14,7 @@ import 'viewmodels/barter_view_model.dart';
 import 'viewmodels/grant_claim_viewmodel.dart';
 import 'viewmodels/home_view_model.dart';
 import 'viewmodels/item_viewmodel.dart';
+import 'viewmodels/handover_view_model.dart';
 import 'viewmodels/social_grant_viewmodel.dart';
 import 'views/splash_screen.dart';
 
@@ -29,6 +30,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => HomeViewModel(HomeService())..loadLatestListings()),
         ChangeNotifierProvider(create: (_) => ItemViewModel()),
+        ChangeNotifierProvider(create: (_) => HandoverViewModel()..loadInitialData()),
         ChangeNotifierProvider(create: (_) => BarterViewModel(BarterService())..loadInitialData()),
         // Modul 5 (Hibah): token diambil dari AuthViewModel saat request dikirim.
         ChangeNotifierProvider(

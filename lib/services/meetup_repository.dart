@@ -470,6 +470,24 @@ class MeetupRepository {
   }
 
   // ==========================================
+  // COMPLETE MEETUP (FR-18 & BR-23)
+  // Serah terima QR berhasil: pertemuan menjadi Selesai, barang menjadi Completed.
+  // ==========================================
+  Future<Meetup> completeMeetup(int id) async {
+    ensureInitialized();
+    final index = _meetups.indexWhere((m) => m.id == id);
+    if (index == -1) throw Exception('Pertemuan tidak ditemukan.');
+
+    final target = _meetups[index];
+    final completed = target.copyWith(
+      status: 'Selesai',
+      itemStatus: 'Completed',
+    );
+
+    _meetups[index] = completed;
+    return completed;
+  }
+  // ==========================================
   // BR-09: AUTO-EXPIRE SERVER SIMULATION
   // Ajakan yang belum dikonfirmasi hingga waktu pertemuan terlewati
   // dianggap Dibatalkan oleh server.

@@ -5,6 +5,9 @@ import '../../models/meetup.dart';
 import '../../services/maps_launcher_service.dart';
 import '../../services/meetup_repository.dart';
 import 'meetup_form_screen.dart';
+import '../handover/serah_terima_qr_screen.dart';
+import '../handover/qr_scanner_screen.dart';
+import '../handover/riwayat_transaksi_screen.dart';
 
 class MeetupDetailScreen extends StatefulWidget {
   final int meetupId;
@@ -399,6 +402,42 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
 
           // Tombol Aksi Buka Rute Google Maps (FR-09 & AC-12)
           if (m.isDikonfirmasi) ...[
+            // TOMBOL UTAMA SERAH TERIMA QR (MODUL 4: FR-17 & FR-18)
+            SizedBox(
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  final isOwner = m.ownerId == MeetupRepository.currentUserId;
+                  if (isOwner) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SerahTerimaQrScreen(meetup: m),
+                      ),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => QrScannerScreen(targetMeetup: m),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 22),
+                label: Text(
+                  m.ownerId == MeetupRepository.currentUserId
+                      ? 'Tampilkan QR Serah Terima (FR-17)'
+                      : 'Pindai QR Serah Terima (FR-18)',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D9488),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             SizedBox(
               height: 48,
               child: ElevatedButton.icon(
@@ -430,6 +469,30 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
                 child: const Text('Batalkan Pertemuan (Kembali Available - BR-10)'),
               ),
             ),
+          ],
+
+          if (m.isSelesai) ...[
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RiwayatTransaksiScreen()),
+                  );
+                },
+                icon: const Icon(Icons.receipt_long_rounded, color: Colors.white),
+                label: const Text(
+                  'Lihat Bukti Digital & Ulasan (FR-19 & FR-20)',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0D9488),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
           ],
 
           if (m.isDiajukan) ...[
