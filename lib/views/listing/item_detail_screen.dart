@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 
 import '../../models/barter_item.dart';
 import '../../models/item_model.dart';
-import '../../viewmodels/auth_view_model.dart';
 import '../barter/widgets/barter_item_selection_sheet.dart';
 import '../katalog_hibah_screen.dart';
 import '../safe_meet/meetup_form_screen.dart';
@@ -263,11 +261,10 @@ class ItemDetailScreen extends StatelessWidget {
                 onPressed: () {
                   if (item.listingType == 'Hibah') {
                     // Klaim hibah diajukan dari katalog hibah (Modul 5)
-                    final nim = context.read<AuthViewModel>().currentUser?.nim ?? '';
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => KatalogHibahScreen(currentUserNim: nim),
+                        builder: (_) => const KatalogHibahScreen(),
                       ),
                     );
                     return;
