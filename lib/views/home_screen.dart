@@ -326,37 +326,50 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SafeMeetDirectoryScreen()),
-                  );
-                },
-                icon: const Icon(Icons.map_rounded, size: 16, color: Color(0xFF0D9488)),
-                label: const Text(
-                  'Buka Peta Titik Temu',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D9488)),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              Expanded(
+                flex: 3,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SafeMeetDirectoryScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.map_rounded, size: 16, color: Color(0xFF0D9488)),
+                  label: const Text(
+                    'Peta Titik Temu',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D9488)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const MyMeetupsScreen()),
-                  );
-                },
-                icon: const Icon(Icons.calendar_today_rounded, size: 14, color: Colors.white),
-                label: const Text(
-                  'Jadwal Saya',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white70),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              Expanded(
+                flex: 2,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MyMeetupsScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.calendar_today_rounded, size: 14, color: Colors.white),
+                  label: const Text(
+                    'Jadwal Saya',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    side: const BorderSide(color: Colors.white70),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
             ],
