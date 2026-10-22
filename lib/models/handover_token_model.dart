@@ -1,3 +1,7 @@
+import 'package:intl/intl.dart';
+
+import 'meetup.dart';
+
 class HandoverTokenModel {
   final String tokenId;
   final String meetupId;
@@ -139,6 +143,33 @@ class MeetupDetailModel {
     required this.partnerCompletedDeals,
     this.isPartnerVerified = true,
   });
+
+  /// Data serah terima dari pertemuan Modul 2. [viewerId] adalah pengguna
+  /// yang membuka layar; mitranya adalah pihak lain dalam pertemuan.
+  /// Rating dan jumlah transaksi mitra belum tersedia dari Modul 2.
+  factory MeetupDetailModel.fromMeetup(Meetup meetup, {required int viewerId}) {
+    final viewerIsRequester = meetup.requesterId == viewerId;
+    final scheduled = meetup.scheduledTime;
+    return MeetupDetailModel(
+      meetupId: meetup.id.toString(),
+      locationTitle: meetup.safeMeetPoint.name,
+      locationSub: meetup.safeMeetPoint.landmark.isNotEmpty
+          ? meetup.safeMeetPoint.landmark
+          : meetup.safeMeetPoint.category,
+      scheduledDate: DateFormat('EEEE, d MMM yyyy', 'id_ID').format(scheduled),
+      scheduledTime: '${DateFormat('HH:mm').format(scheduled)} WIB',
+      status: meetup.status,
+      itemName: meetup.itemTitle,
+      itemCategory: meetup.itemType == 'Jual' ? 'Jual (COD Tunai di Lokasi)' : meetup.itemType,
+      itemGrade: meetup.itemCategory,
+      itemPrice: meetup.itemPrice,
+      partnerName: viewerIsRequester ? meetup.ownerName : meetup.requesterName,
+      partnerNim: viewerIsRequester ? meetup.ownerNim : meetup.requesterNim,
+      partnerFaculty: viewerIsRequester ? 'Pemilik Barang' : 'Peminat',
+      partnerRating: 0,
+      partnerCompletedDeals: 0,
+    );
+  }
 
   factory MeetupDetailModel.sample() {
     return MeetupDetailModel(

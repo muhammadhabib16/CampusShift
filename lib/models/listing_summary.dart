@@ -1,7 +1,7 @@
+import 'item_model.dart';
+
 /// Ringkasan listing untuk bagian "Barang Terbaru" di Beranda.
-///
-/// SEMENTARA sampai Modul 1 (Listing) masuk ke `main`; setelah itu Beranda
-/// cukup memakai model listing dari Modul 1.
+/// Dibentuk dari listing Modul 1 ([ItemModel]) lewat [ListingSummary.fromItem].
 class ListingSummary {
   final String id;
   final String title;
@@ -10,6 +10,7 @@ class ListingSummary {
   final int price;
   final int ownerId;
   final String ownerName;
+  final String condition; // Baru, Sangat Baik, Baik, Cukup
 
   const ListingSummary({
     required this.id,
@@ -19,7 +20,23 @@ class ListingSummary {
     required this.price,
     required this.ownerId,
     required this.ownerName,
+    this.condition = 'Baik',
   });
+
+  /// Listing Modul 1 belum membawa data fakultas, jadi baris kedua kartu
+  /// menampilkan kondisi barang.
+  factory ListingSummary.fromItem(ItemModel item) {
+    return ListingSummary(
+      id: item.id,
+      title: item.title,
+      category: item.category,
+      faculty: 'Kondisi: ${item.condition}',
+      price: item.price,
+      ownerId: int.tryParse(item.ownerId) ?? 0,
+      ownerName: item.ownerName.isEmpty ? 'Pemilik Barang' : item.ownerName,
+      condition: item.condition,
+    );
+  }
 
   factory ListingSummary.fromJson(Map<String, dynamic> json) {
     return ListingSummary(

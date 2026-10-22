@@ -5,15 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/item_model.dart';
-import 'auth_service.dart';
+import 'api_config.dart';
 
 class ItemService {
-  static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api/items';
-    }
-    return 'http://127.0.0.1:3000/api/items';
-  }
+  static String get baseUrl => '${ApiConfig.baseUrl}/items';
 
   // Helper untuk mengambil token
   static Future<String?> _getToken() async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../models/barter_item.dart';
 import '../../../utils/formatters.dart';
 import '../../../viewmodels/barter_view_model.dart';
 import '../barter_negotiation_screen.dart';
@@ -8,7 +9,10 @@ import 'barter_visuals.dart';
 class BarterItemSelectionSheet extends StatelessWidget {
   const BarterItemSelectionSheet({super.key});
 
-  static void show(BuildContext context) {
+  /// [target] adalah barang yang sedang dilihat pengguna. Bila kosong,
+  /// barang target terakhir di BarterViewModel tetap dipakai.
+  static void show(BuildContext context, {BarterItem? target}) {
+    if (target != null) context.read<BarterViewModel>().setTargetItem(target);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

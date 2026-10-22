@@ -1,6 +1,7 @@
 class ItemModel {
   final String id;
   final String ownerId;
+  final String ownerName;
   final String title;
   final String description;
   final String category;
@@ -14,6 +15,7 @@ class ItemModel {
   ItemModel({
     required this.id,
     required this.ownerId,
+    this.ownerName = '',
     required this.title,
     required this.description,
     required this.category,
@@ -29,6 +31,7 @@ class ItemModel {
     return ItemModel(
       id: json['item_id'].toString(),
       ownerId: json['owner_user_id'].toString(),
+      ownerName: (json['owner_name'] ?? '').toString(),
       title: json['judul'] ?? '',
       description: json['deskripsi'] ?? '',
       category: json['kategori'] ?? '',

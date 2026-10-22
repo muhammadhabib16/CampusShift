@@ -1,21 +1,11 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import 'api_config.dart';
 
 class AuthService {
-  // kIsWeb aman untuk semua platform (Android, iOS, Web).
-  // - Flutter Web (Chrome): akses langsung ke localhost PC.
-  // - Android Emulator: gunakan 10.0.2.2 (loopback ke host PC).
-  // - Android Fisik (USB): jalankan `adb reverse tcp:5000 tcp:5000` terlebih dahulu.
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:5000/api/auth';
-    }
-    // Android emulator menggunakan 10.0.2.2 untuk mengakses localhost PC
-    return 'http://10.0.2.2:5000/api/auth';
-  }
+  static String get baseUrl => '${ApiConfig.baseUrl}/auth';
 
   static Future<Map<String, dynamic>> register({
     required String fullName,

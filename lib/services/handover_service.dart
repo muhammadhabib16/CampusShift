@@ -1,18 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/handover_token_model.dart';
+import 'api_config.dart';
 
 class HandoverService {
-  static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api/handover';
-    }
-    return 'http://127.0.0.1:3000/api/handover';
-  }
+  static String get baseUrl => '${ApiConfig.baseUrl}/handover';
 
   // Fallback in-memory session cache for offline / demo mode
   static final Map<String, HandoverTokenModel> _localSessions = {};

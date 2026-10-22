@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'services/api_client.dart';
+import 'services/api_config.dart';
 import 'services/barter_service.dart';
 import 'services/grant_claim_service.dart';
 import 'services/grant_notification_service.dart';
@@ -46,10 +46,10 @@ void main() async {
   );
 }
 
-/// Klien HTTP Modul 5. Host mengikuti AuthService (emulator Android: 10.0.2.2).
+/// Klien HTTP Modul 5. Alamat backend diatur di ApiConfig.
 ApiClient _apiClient(BuildContext context) {
   return ApiClient(
-    baseUrl: kIsWeb ? 'http://127.0.0.1:5000/api' : 'http://10.0.2.2:5000/api',
+    baseUrl: ApiConfig.baseUrl,
     getToken: () => context.read<AuthViewModel>().token,
   );
 }

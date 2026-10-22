@@ -4,9 +4,8 @@ import 'package:intl/intl.dart';
 
 import '../../models/item_model.dart';
 import '../../viewmodels/item_viewmodel.dart';
+import 'add_listing_screen.dart';
 import 'item_detail_screen.dart';
-
-// import 'add_listing_screen.dart'; // Uncomment saat file dibuat
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -176,7 +175,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           style: TextStyle(color: Colors.white),
         ),
         onPressed: () {
-          // Navigator.push(context, MaterialPageRoute(builder: (_) => const AddListingScreen()));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddListingScreen()));
         },
       ),
     );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../../models/handover_token_model.dart';
 import '../../models/meetup.dart';
 import '../../services/maps_launcher_service.dart';
 import '../../services/meetup_repository.dart';
+import '../handover/serah_terima_qr_screen.dart';
 import 'meetup_form_screen.dart';
 
 class MeetupDetailScreen extends StatefulWidget {
@@ -399,6 +401,31 @@ class _MeetupDetailScreenState extends State<MeetupDetailScreen> {
 
           // Tombol Aksi Buka Rute Google Maps (FR-09 & AC-12)
           if (m.isDikonfirmasi) ...[
+            // Lanjut ke serah terima QR (Modul 4) dengan data pertemuan ini
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SerahTerimaQrScreen(
+                        meetupDetail: MeetupDetailModel.fromMeetup(
+                          m,
+                          viewerId: MeetupRepository.currentUserId,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.qr_code_2_rounded, color: Colors.white),
+                label: const Text(
+                  'Buka Sesi QR Serah Terima (FR-17)',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F766E)),
+              ),
+            ),
+            const SizedBox(height: 10),
             SizedBox(
               height: 48,
               child: ElevatedButton.icon(

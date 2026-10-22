@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'login_screen.dart';
-import 'handover/serah_terima_qr_screen.dart';
+import 'safe_meet/my_meetups_screen.dart';
 import '../viewmodels/auth_view_model.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -121,14 +121,15 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   _buildMenuGroup([
                     ProfileMenuItem(icon: Icons.edit_rounded, label: 'Edit Profil', color: const Color(0xFF0D9488)),
+                    // Sesi QR (Modul 4) dibuka dari detail pertemuan yang Dikonfirmasi
                     ProfileMenuItem(
                       icon: Icons.qr_code_2_rounded,
-                      label: 'Serah Terima QR (Modul 4)',
+                      label: 'Jadwal & Serah Terima QR',
                       color: const Color(0xFF0D9488),
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const SerahTerimaQrScreen()),
+                          MaterialPageRoute(builder: (_) => const MyMeetupsScreen()),
                         );
                       },
                     ),
