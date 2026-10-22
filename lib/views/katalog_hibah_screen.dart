@@ -57,7 +57,9 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
               ).then((_) => _grantVm.loadGrants());
             },
             icon: Badge(
-              label: Text('${_claimVm.activeClaimCount}/3'),
+              isLabelVisible: _claimVm.activeClaimCount > 0,
+              backgroundColor: Colors.amber.shade700,
+              label: Text('${_claimVm.activeClaimCount}'),
               child: const Icon(Icons.assignment_turned_in_rounded),
             ),
           ),
@@ -117,20 +119,32 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: const Color(0xFFF0FDFA),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDFA),
+                border: Border(
+                  bottom: BorderSide(
+                    color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                  ),
+                ),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Kuota Klaim Aktif Anda: ${_claimVm.activeClaimCount} / 3 klaim (BR-28)',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF115E59),
+                  const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF0D9488)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Kuota Klaim: ${_claimVm.activeClaimCount}/3 aktif (BR-28)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF115E59),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {
+                  InkWell(
+                    onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -138,7 +152,25 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                         ),
                       ).then((_) => _grantVm.loadGrants());
                     },
-                    child: const Text('Lihat Klaim & Antrean →'),
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Riwayat Klaim',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D9488),
+                            ),
+                          ),
+                          SizedBox(width: 2),
+                          Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFF0D9488)),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -179,11 +211,25 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
       margin: const EdgeInsets.only(bottom: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       elevation: 1.5,
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (item.imageUrl.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  item.imageUrl,
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             Row(
               children: [
                 Container(
@@ -227,7 +273,7 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
                 const Icon(Icons.person_outline_rounded, size: 16, color: Colors.grey),
@@ -236,12 +282,17 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                   child: Text(
                     'Donatur: ${item.ownerName} (${item.ownerReputation.toStringAsFixed(1)} ★)',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0D9488),
                     foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: _claimVm.hasReachedActiveLimit
@@ -267,8 +318,8 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                           );
                           _grantVm.loadGrants();
                         },
-                  icon: const Icon(Icons.volunteer_activism_rounded, size: 18),
-                  label: const Text('Ajukan Klaim'),
+                  icon: const Icon(Icons.volunteer_activism_rounded, size: 16),
+                  label: const Text('Ajukan Klaim', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
