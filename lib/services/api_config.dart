@@ -14,8 +14,22 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class ApiConfig {
   static const String _override = String.fromEnvironment('API_BASE_URL');
 
+  /// URL backend publik di homeserver (Cloudflare Tunnel)
+  static const String productionUrl =
+      'https://campusshift-api.habibdev.site/api';
+
+  /// URL backend lokal untuk pengujian di komputer sendiri
+  static String get localUrl =>
+      kIsWeb ? 'http://127.0.0.1:5000/api' : 'http://10.0.2.2:5000/api';
+
   static String get baseUrl {
+    // 1. Prioritaskan jika dioper via flag `--dart-define=API_BASE_URL=...`
     if (_override.isNotEmpty) return _override;
-    return kIsWeb ? 'http://127.0.0.1:5000/api' : 'http://10.0.2.2:5000/api';
+
+    // 2. Default: menggunakan server homeserver yang aktif
+    return productionUrl;
+
+    // Catatan: Jika ingin kembali menggunakan backend lokal di PC,
+    // ubah baris di atas menjadi: return localUrl;
   }
 }

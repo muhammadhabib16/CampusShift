@@ -149,13 +149,27 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          widget.isPickerMode ? 'Pilih Titik Temu Resmi' : 'Direktori Titik Temu',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              widget.isPickerMode ? 'Pilih Titik Temu Resmi' : 'Direktori Titik Temu',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const Text(
+              'Universitas Andalas (Limau Manis)',
+              style: TextStyle(
+                fontSize: 11,
+                color: Color(0xFF0D9488),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         actions: [
           // Switch Tampilan Daftar <-> Peta

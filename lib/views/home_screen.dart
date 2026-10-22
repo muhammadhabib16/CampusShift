@@ -198,13 +198,27 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'CampuShift',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D9488),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'CampuShift',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D9488),
+                    ),
+                  ),
+                  Text(
+                    'Universitas Andalas',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black45,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -297,7 +311,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Transaksi COD Aman di Kampus',
+            'Transaksi COD Aman di Kampus Unand',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -306,7 +320,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Gunakan titik temu resmi (pos satpam, perpus, rektorat) yang terpantau CCTV & aman.',
+            'Gunakan titik temu resmi Unand (pos satpam, perpus, rektorat) yang terpantau CCTV & aman.',
             style: TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
           ),
           const SizedBox(height: 14),

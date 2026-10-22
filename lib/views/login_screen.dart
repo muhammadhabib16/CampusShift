@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Masuk dengan akun universitasmu untuk memulai transaksi sirkular.',
+                'Masuk dengan akun Universitas Andalas untuk memulai transaksi sirkular.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.black54,
@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 32),
               const Text(
-                'Email Kampus / NIM',
+                'Email Kampus Unand / NIM',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -120,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  hintText: 'contoh@mahasiswa.ui.ac.id',
+                  hintText: 'nama@student.unand.ac.id atau NIM',
                   hintStyle: const TextStyle(color: Colors.black38),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,

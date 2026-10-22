@@ -11,7 +11,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
-  String? _selectedUniversity;
+  String? _selectedUniversity = 'Universitas Andalas (UNAND)';
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _nimController = TextEditingController();
@@ -19,16 +19,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   final List<String> _universities = [
-    'Universitas Indonesia (UI)',
-    'Universitas Gadjah Mada (UGM)',
-    'Institut Teknologi Bandung (ITB)',
-    'Universitas Airlangga (UNAIR)',
-    'Universitas Brawijaya (UB)',
-    'Universitas Diponegoro (UNDIP)',
-    'Institut Pertanian Bogor (IPB)',
-    'Universitas Padjadjaran (UNPAD)',
-    'Universitas Sebelas Maret (UNS)',
-    'Universitas Hasanuddin (UNHAS)',
+    'Universitas Andalas (UNAND)',
   ];
 
   @override
@@ -103,18 +94,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // NIM
               _buildLabel('NIM'),
               const SizedBox(height: 8),
-              _buildTextField(hintText: '12022004123', controller: _nimController),
+              _buildTextField(hintText: '2111522001 (10 Digit NIM)', controller: _nimController),
               const SizedBox(height: 20),
 
               // Universitas
-              _buildLabel('Universitas'),
+              _buildLabel('Universitas (Fokus Wilayah)'),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _selectedUniversity,
-                hint: const Text(
-                  'Pilih Universitas',
-                  style: TextStyle(color: Colors.black38, fontSize: 14),
-                ),
                 decoration: InputDecoration(
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -150,9 +137,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
 
               // Email Kampus
-              _buildLabel('Email Kampus'),
+              _buildLabel('Email Kampus Unand'),
               const SizedBox(height: 8),
-              _buildTextField(hintText: 'mellisa@mahasiswa.ui.ac.id', controller: _emailController),
+              _buildTextField(hintText: 'nama@student.unand.ac.id', controller: _emailController),
+              const SizedBox(height: 6),
+              const Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: Text(
+                  'Wajib menggunakan email resmi mahasiswa Unand (@student.unand.ac.id)',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF0D9488)),
+                ),
+              ),
               const SizedBox(height: 20),
 
               // Kata Sandi
