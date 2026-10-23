@@ -4,7 +4,10 @@ import 'api_config.dart';
 import 'social_grant_service.dart';
 
 class GrantClaimService {
-  final ApiClient _apiClient = ApiClient(baseUrl: ApiConfig.baseUrl, getToken: () => null);
+  final ApiClient _apiClient = ApiClient(
+    baseUrl: ApiConfig.baseUrl,
+    getToken: () => null,
+  );
 
   static final List<GrantClaim> _claimsDb = [
     GrantClaim(
@@ -50,13 +53,17 @@ class GrantClaimService {
       final res = await _apiClient.get('/claims?applicant_id=$applicantUserId');
       if (res is List) {
         return res
-            .map((e) => GrantClaim.fromJson(Map<String, dynamic>.from(e as Map)))
+            .map(
+              (e) => GrantClaim.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
             .toList();
       }
     } catch (_) {}
 
     if (applicantUserId.isEmpty) return List.from(_claimsDb);
-    return _claimsDb.where((c) => c.applicantUserId == applicantUserId).toList();
+    return _claimsDb
+        .where((c) => c.applicantUserId == applicantUserId)
+        .toList();
   }
 
   Future<List<GrantClaim>> fetchQueueForItem(String itemId) async {
@@ -65,7 +72,9 @@ class GrantClaimService {
       final res = await _apiClient.get('/items/$itemId/claims');
       if (res is List) {
         list = res
-            .map((e) => GrantClaim.fromJson(Map<String, dynamic>.from(e as Map)))
+            .map(
+              (e) => GrantClaim.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
             .toList();
       }
     } catch (_) {
@@ -105,30 +114,40 @@ class GrantClaimService {
     required String justification,
   }) async {
     if (donorUserId.isNotEmpty && donorUserId == applicantUserId) {
-      throw Exception('Anda tidak dapat mengklaim barang hibah milik sendiri (BR-27).');
+      throw Exception(
+        'Anda tidak dapat mengklaim barang hibah milik sendiri (BR-27).',
+      );
     }
 
     final trimmed = justification.trim();
     if (trimmed.length < 100) {
-      throw Exception('Justifikasi kebutuhan wajib minimal 100 karakter (BR-27).');
+      throw Exception(
+        'Justifikasi kebutuhan wajib minimal 100 karakter (BR-27).',
+      );
     }
     if (trimmed.length > 1000) {
       throw Exception('Justifikasi kebutuhan maksimal 1.000 karakter (BR-27).');
     }
 
-    final duplicate = _claimsDb.any((c) =>
-        c.itemId == itemId &&
-        c.applicantUserId == applicantUserId &&
-        (c.status == 'Pending' || c.status == 'Approved'));
+    final duplicate = _claimsDb.any(
+      (c) =>
+          c.itemId == itemId &&
+          c.applicantUserId == applicantUserId &&
+          (c.status == 'Pending' || c.status == 'Approved'),
+    );
     if (duplicate) {
-      throw Exception('Anda sudah memiliki klaim aktif pada barang hibah ini (FR-23).');
+      throw Exception(
+        'Anda sudah memiliki klaim aktif pada barang hibah ini (FR-23).',
+      );
     }
 
     final activeCount = _claimsDb
         .where((c) => c.applicantUserId == applicantUserId && c.isActiveClaim)
         .length;
     if (activeCount >= 3) {
-      throw Exception('Batas maksimal 3 klaim aktif (Pending/Approved) telah tercapai (BR-28).');
+      throw Exception(
+        'Batas maksimal 3 klaim aktif (Pending/Approved) telah tercapai (BR-28).',
+      );
     }
 
     final newClaim = GrantClaim(
@@ -168,12 +187,16 @@ class GrantClaimService {
 
     final current = _claimsDb[index];
     if (current.status != 'Pending') {
-      throw Exception('Klaim yang sudah ${current.status} tidak dapat disunting (AC-30).');
+      throw Exception(
+        'Klaim yang sudah ${current.status} tidak dapat disunting (AC-30).',
+      );
     }
 
     final trimmed = justification.trim();
     if (trimmed.length < 100 || trimmed.length > 1000) {
-      throw Exception('Justifikasi wajib antara 100 hingga 1.000 karakter (BR-27).');
+      throw Exception(
+        'Justifikasi wajib antara 100 hingga 1.000 karakter (BR-27).',
+      );
     }
 
     final updated = current.copyWith(
@@ -198,11 +221,13 @@ class GrantClaimService {
 
     final current = _claimsDb[index];
     if (current.status != 'Pending') {
-      throw Exception('Hanya klaim berstatus Pending yang dapat dihapus permanen (BR-32).');
+      throw Exception(
+        'Hanya klaim berstatus Pending yang dapat dihapus permanen (BR-32).',
+      );
     }
 
     try {
-      await _apiClient. get('/claims/$claimId/delete');
+      await _apiClient.get('/claims/$claimId/delete');
     } catch (_) {}
 
     _claimsDb.removeAt(index);
@@ -216,7 +241,9 @@ class GrantClaimService {
 
     final current = _claimsDb[index];
     if (current.status != 'Approved') {
-      throw Exception('Hanya klaim berstatus Approved yang dapat dibatalkan. Gunakan Hapus untuk klaim Pending (BR-31).');
+      throw Exception(
+        'Hanya klaim berstatus Approved yang dapat dibatalkan. Gunakan Hapus untuk klaim Pending (BR-31).',
+      );
     }
 
     final updated = current.copyWith(
@@ -284,7 +311,9 @@ class GrantClaimService {
 
     final updated = current.copyWith(
       status: 'Rejected',
-      rejectionReason: (reason != null && reason.trim().isNotEmpty) ? reason.trim() : null,
+      rejectionReason: (reason != null && reason.trim().isNotEmpty)
+          ? reason.trim()
+          : null,
       updatedAt: DateTime.now(),
     );
 
