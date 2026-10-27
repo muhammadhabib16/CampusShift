@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 
 void main() {
   testWidgets('Beranda menampilkan barang terbaru dari HomeViewModel', (tester) async {
-    final homeViewModel = HomeViewModel(HomeService());
+    final homeViewModel = HomeViewModel(HomeService(fetchItems: () async => []));
     await homeViewModel.loadLatestListings();
     await tester.pumpWidget(
       MultiProvider(

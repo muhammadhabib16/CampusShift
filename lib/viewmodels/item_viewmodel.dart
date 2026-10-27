@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/item_model.dart';
 import '../services/item_service.dart';
-import '../services/notification_service.dart'; // Import notifikasi
+import '../services/notification_service.dart';
 
 class ItemViewModel extends ChangeNotifier {
   List<ItemModel> _catalogItems = [];
@@ -27,22 +27,22 @@ class ItemViewModel extends ChangeNotifier {
   double get minPrice => _minPrice;
   double get maxPrice => _maxPrice;
 
+  // FETCH KATALOG
   Future<void> fetchCatalog() async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
     try {
-      final items = await ItemService.getCatalog(
+      // Backend sudah menangani seluruh logic filter (termasuk harga 0 untuk hibah)
+      _catalogItems = await ItemService.getCatalog(
         search: _searchQuery,
         category: _selectedCategory,
         type: _selectedType,
+        minPrice: _minPrice,
+        maxPrice: _maxPrice,
       );
-      _catalogItems = items.where((item) {
-        if (item.listingType == 'Hibah') return true;
-        return item.price >= _minPrice && item.price <= _maxPrice;
-      }).toList();
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -73,6 +73,7 @@ class ItemViewModel extends ChangeNotifier {
     fetchCatalog();
   }
 
+  // TAMBAH LISTING
   Future<bool> addListing(Map<String, dynamic> data, List<File> images) async {
     _isLoading = true;
     notifyListeners();
@@ -82,12 +83,11 @@ class ItemViewModel extends ChangeNotifier {
       if (success) {
         await fetchCatalog();
         await fetchMyItems();
-
         // --- TRIGGER NOTIFIKASI SIMULASI FR-05 ---
         NotificationService.scheduleStaleListingAlert(data['judul']);
       }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -95,74 +95,61 @@ class ItemViewModel extends ChangeNotifier {
     return success;
   }
 
+  // FETCH BARANG SAYA
   Future<void> fetchMyItems() async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (_myItems.isEmpty) {
-      _myItems = [
-        ItemModel(
-          id: 'my_1',
-          ownerId: 'naufal123',
-          title: 'Kalkulator Saintifik Casio fx-991EX',
-          description: 'Fungsi normal 100%.',
-          category: 'Elektronik & Gadget',
-          listingType: 'Jual',
-          price: 180000,
-          isBarterOpen: true,
-          condition: 'Sangat Baik (Grade A)',
-          photoUrls: [
-            'https://via.placeholder.com/300/0D9488/FFFFFF?text=Kalkulator+Saya',
-          ],
-          status: 'Available',
-        ),
-        ItemModel(
-          id: 'my_2',
-          ownerId: 'naufal123',
-          title: 'Meja Lipat Belajar',
-          description: 'Jarang dipakai.',
-          category: 'Furnitur Kos',
-          listingType: 'Hibah',
-          price: 0,
-          isBarterOpen: false,
-          condition: 'Baik (Grade B)',
-          photoUrls: [
-            'https://via.placeholder.com/300/0D9488/FFFFFF?text=Meja+Lipat+Saya',
-          ],
-          status: 'Archived',
-        ),
-      ];
-    }
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  void changeItemStatus(String id, String newStatus) {
-    final index = _myItems.indexWhere((item) => item.id == id);
-    if (index != -1) {
-      final old = _myItems[index];
-      _myItems[index] = ItemModel(
-        id: old.id,
-        ownerId: old.ownerId,
-        title: old.title,
-        description: old.description,
-        category: old.category,
-        listingType: old.listingType,
-        price: old.price,
-        isBarterOpen: old.isBarterOpen,
-        condition: old.condition,
-        photoUrls: old.photoUrls,
-        status: newStatus,
-      );
+    try {
+      _myItems = await ItemService.getMyItems();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  void deleteMyItem(String id) {
-    _myItems.removeWhere((item) => item.id == id);
+  // UBAH STATUS (ARSIPKAN / AKTIFKAN)
+  Future<void> changeItemStatus(String id, String newStatus) async {
+    _isLoading = true;
     notifyListeners();
+    try {
+      if (newStatus == 'Archived') {
+        await ItemService.archiveListing(id);
+      } else if (newStatus == 'Available') {
+        await ItemService.activateListing(id);
+      }
+      // Ambil data terbaru dari server setelah berhasil diubah
+      await fetchMyItems();
+      await fetchCatalog();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
+  // HAPUS PERMANEN
+  Future<void> deleteMyItem(String id) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await ItemService.deleteListing(id);
+      // Ambil data terbaru dari server setelah berhasil dihapus
+      await fetchMyItems();
+      await fetchCatalog();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // EDIT LISTING
   Future<bool> updateListing(
     String id,
     Map<String, dynamic> data,
@@ -170,26 +157,19 @@ class ItemViewModel extends ChangeNotifier {
   ) async {
     _isLoading = true;
     notifyListeners();
-    await Future.delayed(const Duration(seconds: 1));
-    final index = _myItems.indexWhere((item) => item.id == id);
-    if (index != -1) {
-      final old = _myItems[index];
-      _myItems[index] = ItemModel(
-        id: old.id,
-        ownerId: old.ownerId,
-        title: data['judul'],
-        description: data['deskripsi'],
-        category: data['kategori'],
-        listingType: data['tipe_listing'],
-        price: data['harga'] ?? 0,
-        isBarterOpen: data['terbuka_untuk_barter'],
-        condition: data['kondisi'],
-        photoUrls: old.photoUrls,
-        status: old.status,
-      );
+    bool success = false;
+    try {
+      success = await ItemService.updateListing(id, data, images);
+      if (success) {
+        await fetchCatalog();
+        await fetchMyItems();
+      }
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-    _isLoading = false;
-    notifyListeners();
-    return true;
+    return success;
   }
 }

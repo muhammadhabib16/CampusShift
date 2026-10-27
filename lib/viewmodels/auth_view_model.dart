@@ -64,17 +64,33 @@ class AuthViewModel extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
-    if (fullName.isEmpty || nim.isEmpty || email.isEmpty || password.isEmpty) {
+    final trimmedName = fullName.trim();
+    final trimmedNim = nim.trim();
+    final trimmedEmail = email.trim().toLowerCase();
+
+    if (trimmedName.isEmpty || trimmedNim.isEmpty || trimmedEmail.isEmpty || password.isEmpty) {
       _message = 'Semua kolom wajib diisi';
+      notifyListeners();
+      return false;
+    }
+
+    if (!RegExp(r'^\d{10}$').hasMatch(trimmedNim)) {
+      _message = 'NIM harus berupa 10 digit angka (Sesuai format UNAND)';
+      notifyListeners();
+      return false;
+    }
+
+    if (!trimmedEmail.endsWith('@student.unand.ac.id') && !trimmedEmail.endsWith('@unand.ac.id')) {
+      _message = 'Pendaftaran saat ini khusus mahasiswa Universitas Andalas (@student.unand.ac.id)';
       notifyListeners();
       return false;
     }
 
     _setLoading(true);
     final result = await AuthService.register(
-      fullName: fullName,
-      nim: nim,
-      email: email,
+      fullName: trimmedName,
+      nim: trimmedNim,
+      email: trimmedEmail,
       password: password,
     );
     final success = result['success'] == true;

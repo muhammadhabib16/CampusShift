@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/meetup_repository.dart';
+import '../viewmodels/auth_view_model.dart';
+import '../viewmodels/home_view_model.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'barter/barter_list_screen.dart';
+import 'listing/catalog_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -13,12 +18,39 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    _ComingSoonScreen(label: 'Katalog'),
-    BarterListScreen(),
-    ProfileScreen(),
+  late final List<Widget> _screens = [
+    HomeScreen(onSelectTab: _selectTab),
+    const CatalogScreen(),
+    const BarterListScreen(),
+    const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Pertemuan (Modul 2) dicatat atas nama pengguna yang login. Pada mode uji
+    // tanpa server, data pengguna kosong dan nilai bawaan repository dipakai.
+    final user = context.read<AuthViewModel>().currentUser;
+    if (user != null) {
+      MeetupRepository.setCurrentUser(
+        id: int.tryParse(user.id) ?? MeetupRepository.currentUserId,
+        name: user.fullName,
+        nim: user.nim,
+      );
+    }
+
+    // Sinkronisasi: Muat data "Barang Terbaru" dari Modul 1 (Naufal)
+    // agar Home Screen menampilkan listing terkini dari ItemService.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HomeViewModel>().loadLatestListings();
+    });
+  }
+
+  void _selectTab(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,11 +91,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final bool isSelected = _selectedIndex == index;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-      },
+      onTap: () => _selectTab(index),
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -82,36 +110,6 @@ class _MainScreenState extends State<MainScreen> {
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? const Color(0xFF0D9488) : Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonScreen extends StatelessWidget {
-  final String label;
-  const _ComingSoonScreen({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.construction_rounded, size: 64, color: Color(0xFF0D9488)),
-            const SizedBox(height: 16),
-            Text(
-              '$label\nSegera Hadir!',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
               ),
             ),
           ],

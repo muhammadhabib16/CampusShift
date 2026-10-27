@@ -6,6 +6,7 @@ import '../../models/item_model.dart';
 import '../../viewmodels/item_viewmodel.dart';
 import 'add_listing_screen.dart';
 import 'item_detail_screen.dart';
+import 'my_items_screen.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -46,24 +47,27 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text(
-          'CampuShift',
+          'Katalog Barang',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0D9488),
+            color: Colors.black87,
           ),
         ),
+        backgroundColor: Colors.white,
+        elevation: 0,
         actions: [
+          // Tombol Barang Saya — sinkron dengan Profile "Listing Saya"
           IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundImage: NetworkImage('https://via.placeholder.com/150'),
-              radius: 16,
-            ),
+            tooltip: 'Barang Saya',
+            icon: const Icon(Icons.inventory_2_outlined, color: Color(0xFF0D9488)),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyItemsScreen()),
+              );
+            },
           ),
         ],
       ),
@@ -111,6 +115,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         'Buku & Referensi',
                         'Elektronik & Gadget',
                         'Furnitur Kos',
+                        'Alat Perkuliahan',
                       ]
                       .map(
                         (category) => Padding(
@@ -119,11 +124,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             label: Text(category),
                             selected: viewModel.selectedCategory == category,
                             onSelected: (selected) {
-                              if (selected)
+                              if (selected) {
                                 viewModel.updateFilter(category: category);
+                              }
                             },
                             selectedColor: const Color(0xFF0D9488)
-                                .withOpacity(0.2),
+                                .withValues(alpha: 0.2),
                             labelStyle: TextStyle(
                               color: viewModel.selectedCategory == category
                                   ? const Color(0xFF0D9488)
@@ -241,7 +247,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Row(

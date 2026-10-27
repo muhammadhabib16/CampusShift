@@ -16,7 +16,7 @@ class AddListingScreen extends StatefulWidget {
 class _AddListingScreenState extends State<AddListingScreen> {
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
-  List<File> _images = [];
+  final List<File> _images = [];
 
   // Controllers & State variables
   final TextEditingController _titleController = TextEditingController();
@@ -193,7 +193,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: const InputDecoration(
                 labelText: 'Kategori Perlengkapan *',
                 border: OutlineInputBorder(),
@@ -212,8 +212,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
                   child: RadioListTile<String>(
                     title: const Text('Jual (COD Tunai)'),
                     value: 'Jual',
-                    groupValue: _listingType,
+                    selected: _listingType == 'Jual',
                     activeColor: const Color(0xFF0D9488),
+                    toggleable: false,
                     onChanged: (val) => setState(() => _listingType = val!),
                   ),
                 ),
@@ -221,8 +222,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
                   child: RadioListTile<String>(
                     title: const Text('Hibah (Rp 0)'),
                     value: 'Hibah',
-                    groupValue: _listingType,
+                    selected: _listingType == 'Hibah',
                     activeColor: const Color(0xFF0D9488),
+                    toggleable: false,
                     onChanged: (val) {
                       setState(() {
                         _listingType = val!;
@@ -245,8 +247,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
                 ),
                 validator: (value) {
                   int? price = int.tryParse(value ?? '0');
-                  if (price == null || price < 1000 || price > 50000000)
+                  if (price == null || price < 1000 || price > 50000000) {
                     return 'Rentang Rp 1.000 - Rp 50.000.000 (BR-02)'; // BR-02
+                  }
                   return null;
                 },
               ),
@@ -254,7 +257,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
                 title: const Text('Terbuka untuk Barter'),
                 subtitle: const Text('Izinkan mahasiswa lain menukar barang'),
                 value: _isBarterOpen,
-                activeColor: const Color(0xFF0D9488),
+                activeThumbColor: const Color(0xFF0D9488),
                 onChanged: (val) => setState(() => _isBarterOpen = val),
               ),
             ],
@@ -269,8 +272,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
               (cond) => RadioListTile<String>(
                 title: Text(cond),
                 value: cond,
-                groupValue: _selectedCondition,
+                selected: _selectedCondition == cond,
                 activeColor: const Color(0xFF0D9488),
+                toggleable: false,
                 onChanged: (val) => setState(() => _selectedCondition = val!),
               ),
             ),

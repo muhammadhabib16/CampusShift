@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/barter_deal.dart';
 import '../../utils/formatters.dart';
 import '../../viewmodels/barter_view_model.dart';
-import '../handover/serah_terima_qr_screen.dart';
+import '../safe_meet/meetup_form_screen.dart';
 import 'widgets/barter_visuals.dart';
 
 /// Detail Tawaran & Konfirmasi Kesepakatan (FR-13 Dual-Confirmation).
@@ -172,7 +172,7 @@ class BarterConfirmationScreen extends StatelessWidget {
           // Titik temu dan jadwal COD dibuat di Modul 2 setelah kesepakatan Locked.
           Text(
             isLocked
-                ? 'Kesepakatan terkunci. Ajukan titik temu dan jadwal COD dari menu Pertemuan.'
+                ? 'Kesepakatan terkunci. Ajukan titik temu dan jadwal COD, lalu serah terima dengan QR saat bertemu.'
                 : 'Titik temu dan jadwal COD diajukan setelah kedua pihak mengonfirmasi.',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12, color: Colors.black54),
@@ -201,15 +201,27 @@ class BarterConfirmationScreen extends StatelessWidget {
                     ),
             )
           else if (isLocked)
-            // Lanjut ke serah terima (Modul 4) setelah kesepakatan terkunci
+            // Lanjut ke jadwal pertemuan (Modul 2) setelah kesepakatan terkunci;
+            // QR serah terima (Modul 4) dibuka dari detail pertemuan.
             OutlinedButton.icon(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SerahTerimaQrScreen()),
+                MaterialPageRoute(
+                  builder: (_) => MeetupFormScreen(
+                    itemId: int.tryParse(deal.partnerItem.id.replaceAll(RegExp(r'\D'), '')) ?? 0,
+                    itemTitle: '${deal.partnerItem.name} ⇄ ${deal.myItem.name}',
+                    itemPrice: deal.cashTopUp > 0
+                        ? 'Top-up ${formatRupiah(deal.cashTopUp)}'
+                        : 'Tanpa selisih tunai',
+                    itemType: 'Barter',
+                    ownerId: 0,
+                    ownerName: deal.partnerName,
+                  ),
+                ),
               ),
-              icon: const Icon(Icons.qr_code_2_rounded, color: Color(0xFF0D9488)),
+              icon: const Icon(Icons.calendar_month_rounded, color: Color(0xFF0D9488)),
               label: const Text(
-                'Buka Serah Terima QR',
+                'Ajukan Titik Temu & Jadwal',
                 style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
               ),
               style: OutlinedButton.styleFrom(

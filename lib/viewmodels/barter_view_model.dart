@@ -60,6 +60,12 @@ class BarterViewModel extends ChangeNotifier {
     }
   }
 
+  /// Menetapkan barang milik orang lain yang akan ditawar (dari detail barang).
+  void setTargetItem(BarterItem item) {
+    _targetItem = item;
+    notifyListeners();
+  }
+
   void selectItem(int index) {
     if (index < 0 || index >= _myItems.length) return;
     _selectedIndex = index;

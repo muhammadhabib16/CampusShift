@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/barter_item.dart';
+import '../models/handover_token_model.dart';
 import '../models/listing_summary.dart';
+import '../models/meetup.dart';
+import '../services/meetup_repository.dart';
 import '../utils/formatters.dart';
 import '../viewmodels/auth_view_model.dart';
 import '../viewmodels/home_view_model.dart';
 import 'barter/widgets/barter_item_selection_sheet.dart';
 import 'handover/serah_terima_qr_screen.dart';
+import 'katalog_hibah_screen.dart';
+import 'listing/add_listing_screen.dart';
 import 'safe_meet/meetup_form_screen.dart';
 import 'safe_meet/my_meetups_screen.dart';
 import 'safe_meet/safe_meet_directory_screen.dart';
+
+/// Indeks tab di bottom navigation MainScreen.
+const int katalogTabIndex = 1;
+const int barterTabIndex = 2;
 
 /// Tampilan tiap kategori (PRD FR-01). Dipakai kartu kategori dan kartu barang.
 class _CategoryStyle {
@@ -29,7 +39,10 @@ const Map<String, _CategoryStyle> _categoryStyles = {
 const _defaultCategoryStyle = _CategoryStyle('Lainnya', Icons.inventory_2_outlined, Colors.grey);
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.onSelectTab});
+
+  /// Berpindah tab di MainScreen (misalnya ke Katalog atau Barter).
+  final ValueChanged<int>? onSelectTab;
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +93,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () => onSelectTab?.call(katalogTabIndex),
                       child: const Text(
                         'Lihat Semua',
                         style: TextStyle(
@@ -185,13 +198,27 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'CampuShift',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D9488),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'CampuShift',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D9488),
+                    ),
+                  ),
+                  Text(
+                    'Universitas Andalas',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black45,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -207,7 +234,8 @@ class HomeScreen extends StatelessWidget {
             icon: const Icon(Icons.event_note_rounded, color: Color(0xFF0D9488)),
           ),
           IconButton(
-            onPressed: () {},
+            tooltip: 'Cari di Katalog',
+            onPressed: () => onSelectTab?.call(katalogTabIndex),
             icon: const Icon(Icons.search_rounded, color: Colors.black54),
           ),
           IconButton(
@@ -283,7 +311,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Transaksi COD Aman di Kampus',
+            'Transaksi COD Aman di Kampus Unand',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -292,43 +320,56 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Gunakan titik temu resmi (pos satpam, perpus, rektorat) yang terpantau CCTV & aman.',
+            'Gunakan titik temu resmi Unand (pos satpam, perpus, rektorat) yang terpantau CCTV & aman.',
             style: TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
           ),
           const SizedBox(height: 14),
           Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SafeMeetDirectoryScreen()),
-                  );
-                },
-                icon: const Icon(Icons.map_rounded, size: 16, color: Color(0xFF0D9488)),
-                label: const Text(
-                  'Buka Peta Titik Temu',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D9488)),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              Expanded(
+                flex: 3,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SafeMeetDirectoryScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.map_rounded, size: 16, color: Color(0xFF0D9488)),
+                  label: const Text(
+                    'Peta Titik Temu',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D9488)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const MyMeetupsScreen()),
-                  );
-                },
-                icon: const Icon(Icons.calendar_today_rounded, size: 14, color: Colors.white),
-                label: const Text(
-                  'Jadwal Saya',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white70),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              Expanded(
+                flex: 2,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MyMeetupsScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.calendar_today_rounded, size: 14, color: Colors.white),
+                  label: const Text(
+                    'Jadwal Saya',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    side: const BorderSide(color: Colors.white70),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ),
             ],
@@ -394,13 +435,30 @@ class HomeScreen extends StatelessWidget {
                 icon: Icons.sell_rounded,
                 label: 'Jual',
                 color: const Color(0xFF0D9488),
-                onTap: () {},
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AddListingScreen()),
+                  );
+                },
               ),
               _buildQuickActionItem(
                 icon: Icons.swap_horiz_rounded,
                 label: 'Barter',
                 color: Colors.orange,
-                onTap: () {},
+                onTap: () => onSelectTab?.call(barterTabIndex),
+              ),
+              _buildQuickActionItem(
+                icon: Icons.volunteer_activism_rounded,
+                label: 'Hibah',
+                color: Colors.purple,
+                onTap: () {
+                  final nim = context.read<AuthViewModel>().currentUser?.nim ?? '';
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => KatalogHibahScreen(currentUserNim: nim),
+                    ),
+                  );
+                },
               ),
               _buildQuickActionItem(
                 icon: Icons.shield_rounded,
@@ -409,16 +467,6 @@ class HomeScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const SafeMeetDirectoryScreen()),
-                  );
-                },
-              ),
-              _buildQuickActionItem(
-                icon: Icons.event_available_rounded,
-                label: 'Jadwal Temu',
-                color: Colors.blue.shade700,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const MyMeetupsScreen()),
                   );
                 },
               ),
@@ -636,7 +684,16 @@ class HomeScreen extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.of(ctx).pop();
-                    BarterItemSelectionSheet.show(context);
+                    BarterItemSelectionSheet.show(
+                      context,
+                      target: BarterItem(
+                        id: listing.id,
+                        name: listing.title,
+                        price: listing.price,
+                        category: listing.category,
+                        condition: listing.condition,
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.swap_horiz_rounded, color: Color(0xFF0D9488)),
                   label: const Text(
@@ -689,7 +746,20 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  /// Kartu pertemuan Dikonfirmasi terdekat (Modul 2) untuk membuka sesi QR
+  /// serah terima (Modul 4). Ikut diperbarui saat data pertemuan berubah.
   Widget _buildActiveMeetupCard(BuildContext context) {
+    final repository = MeetupRepository();
+    return ListenableBuilder(
+      listenable: repository,
+      builder: (context, _) {
+        final meetup = repository.getNextConfirmedMeetup();
+        return _buildMeetupCardContent(context, meetup);
+      },
+    );
+  }
+
+  Widget _buildMeetupCardContent(BuildContext context, Meetup? meetup) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -735,27 +805,28 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Dikonfirmasi',
-                  style: TextStyle(
-                    color: Color(0xFF15803D),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+              if (meetup != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Dikonfirmasi',
+                    style: TextStyle(
+                      color: Color(0xFF15803D),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Kalkulator Saintifik Casio fx-991EX',
-            style: TextStyle(
+          Text(
+            meetup?.itemTitle ?? 'Belum ada pertemuan terkonfirmasi',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -763,12 +834,20 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Row(
-            children: const [
-              Icon(Icons.location_on_outlined, color: Colors.white70, size: 14),
-              SizedBox(width: 4),
-              Text(
-                'Pos Satpam Gedung A • Hari Ini 14:30 WIB',
-                style: TextStyle(color: Colors.white70, fontSize: 11),
+            children: [
+              Icon(
+                meetup == null ? Icons.info_outline_rounded : Icons.location_on_outlined,
+                color: Colors.white70,
+                size: 14,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  meetup == null
+                      ? 'Sesi QR tersedia setelah pemilik mengonfirmasi pertemuan.'
+                      : '${meetup.safeMeetPoint.name} • ${meetup.formattedShortDateTime}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                ),
               ),
             ],
           ),
@@ -780,12 +859,24 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const SerahTerimaQrScreen(),
+                    builder: (_) => meetup == null
+                        ? const MyMeetupsScreen()
+                        : SerahTerimaQrScreen(
+                            meetupDetail: MeetupDetailModel.fromMeetup(
+                              meetup,
+                              viewerId: MeetupRepository.currentUserId,
+                            ),
+                          ),
                   ),
                 );
               },
-              icon: const Icon(Icons.qr_code_rounded, size: 18),
-              label: const Text('Buka Sesi QR Serah Terima (FR-17)'),
+              icon: Icon(
+                meetup == null ? Icons.event_note_rounded : Icons.qr_code_rounded,
+                size: 18,
+              ),
+              label: Text(
+                meetup == null ? 'Lihat Jadwal Pertemuan Saya' : 'Buka Sesi QR Serah Terima (FR-17)',
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFF0F766E),

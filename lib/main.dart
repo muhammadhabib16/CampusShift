@@ -1,15 +1,28 @@
+import 'package:campusshift/viewmodels/social_grant_viewmodel.dart';
+import 'package:campusshift/views/splash_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
-// Import Service Notifikasi Modul 1
+// Import Service Notifikasi Modul 1 (Milik Naufal)
 import 'services/notification_service.dart';
 
-// Import ViewModels
-import 'viewmodels/item_viewmodel.dart';
+// Import Services & Config dari teman-teman (Branch Dev)
+import 'services/api_client.dart';
+import 'services/api_config.dart';
+import 'services/barter_service.dart';
+import 'services/grant_claim_service.dart';
+import 'services/grant_notification_service.dart';
+import 'services/home_service.dart';
+import 'services/social_grant_service.dart';
 
-// Import Views
-import 'views/listing/catalog_screen.dart'; // Wajib diimport untuk bypass
+// Import ViewModels dari teman-teman (Branch Dev)
+import 'viewmodels/auth_view_model.dart';
+import 'viewmodels/barter_view_model.dart';
+import 'viewmodels/grant_claim_viewmodel.dart';
+import 'viewmodels/home_view_model.dart';
+import 'viewmodels/item_viewmodel.dart';
 
 void main() async {
   // Wajib ditambahkan jika main() menggunakan async
@@ -21,16 +34,34 @@ void main() async {
   // Inisialisasi notifikasi lokal (Modul 1)
   await NotificationService.init();
 
+  // ApiClient bersama untuk service-service Modul 5
+  final apiClient = ApiClient(
+    baseUrl: ApiConfig.baseUrl,
+    getToken: () => null, // Token akan di-set setelah login
+  );
+
+  // Plugin notifikasi lokal untuk Modul 5 (FR-25)
+  final notificationsPlugin = FlutterLocalNotificationsPlugin();
+
   runApp(
     MultiProvider(
       providers: [
         // Provider untuk Modul 1 Anda
         ChangeNotifierProvider(create: (_) => ItemViewModel()),
 
-        // Catatan: Jika nanti Anda ingin menguji fitur teman,
-        // aktifkan provider mereka di bawah ini:
-        // ChangeNotifierProvider(create: (_) => AuthViewModel()),
-        // ChangeNotifierProvider(create: (_) => BarterViewModel()),
+        // Provider milik teman-teman
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => BarterViewModel(BarterService())),
+        ChangeNotifierProvider(create: (_) => HomeViewModel(HomeService())),
+        ChangeNotifierProvider(
+          create: (_) => GrantClaimViewModel(
+            GrantClaimService(apiClient),
+            GrantNotificationService(notificationsPlugin),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => SocialGrantViewModel(SocialGrantService(apiClient)),
+        ),
       ],
       child: const MainApp(),
     ),
@@ -52,8 +83,14 @@ class MainApp extends StatelessWidget {
           primary: const Color(0xFF0D9488),
         ),
       ),
-      // Bypass ke CatalogScreen agar bisa langsung mencoba Tambah Listing
-      home: const CatalogScreen(),
+
+      // === BYPASS TAMPILAN MODUL 1 ===
+      // Cukup hilangkan comment (//) pada SATU halaman yang ingin di-tes,
+      // dan berikan comment (//) pada halaman lainnya.
+      home: const SplashScreen(),
+      // home: const CatalogScreen(),
+      // home: const AddListingScreen(),
+      // home: const MyItemsScreen(),
     );
   }
 }

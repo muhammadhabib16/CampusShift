@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'login_screen.dart';
-import 'handover/serah_terima_qr_screen.dart';
+import 'listing/my_items_screen.dart';
+import 'barter/barter_list_screen.dart';
+import 'safe_meet/my_meetups_screen.dart';
 import '../viewmodels/auth_view_model.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -121,20 +123,43 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   _buildMenuGroup([
                     ProfileMenuItem(icon: Icons.edit_rounded, label: 'Edit Profil', color: const Color(0xFF0D9488)),
+                    // Sesi QR (Modul 4) dibuka dari detail pertemuan yang Dikonfirmasi
                     ProfileMenuItem(
                       icon: Icons.qr_code_2_rounded,
-                      label: 'Serah Terima QR (Modul 4)',
+                      label: 'Jadwal & Serah Terima QR',
                       color: const Color(0xFF0D9488),
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const SerahTerimaQrScreen()),
+                          MaterialPageRoute(builder: (_) => const MyMeetupsScreen()),
                         );
                       },
                     ),
-                    ProfileMenuItem(icon: Icons.list_alt_rounded, label: 'Listing Saya', color: Colors.blue),
+                    // Sinkron dengan Modul 1 (Naufal): Listing Saya → MyItemsScreen
+                    ProfileMenuItem(
+                      icon: Icons.list_alt_rounded,
+                      label: 'Listing Saya',
+                      color: Colors.blue,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MyItemsScreen()),
+                        );
+                      },
+                    ),
                     ProfileMenuItem(icon: Icons.receipt_long_rounded, label: 'Riwayat Transaksi', color: Colors.orange),
-                    ProfileMenuItem(icon: Icons.swap_horiz_rounded, label: 'Barter Saya', color: Colors.purple),
+                    // Sinkron dengan Modul 3: Barter Saya → BarterListScreen
+                    ProfileMenuItem(
+                      icon: Icons.swap_horiz_rounded,
+                      label: 'Barter Saya',
+                      color: Colors.purple,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const BarterListScreen()),
+                        );
+                      },
+                    ),
                     ProfileMenuItem(icon: Icons.settings_rounded, label: 'Pengaturan', color: Colors.grey),
                   ]),
                   const SizedBox(height: 12),

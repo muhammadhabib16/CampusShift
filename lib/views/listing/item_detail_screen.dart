@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../../models/barter_item.dart';
 import '../../models/item_model.dart';
+import '../../viewmodels/auth_view_model.dart';
+import '../barter/widgets/barter_item_selection_sheet.dart';
+import '../katalog_hibah_screen.dart';
+import '../safe_meet/meetup_form_screen.dart';
 
 class ItemDetailScreen extends StatelessWidget {
   final ItemModel item;
@@ -57,7 +63,7 @@ class ItemDetailScreen extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0D9488).withOpacity(0.1),
+                          color: const Color(0xFF0D9488).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -76,7 +82,7 @@ class ItemDetailScreen extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -121,7 +127,7 @@ class ItemDetailScreen extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.2),
+                            color: Colors.green.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
@@ -205,7 +211,7 @@ class ItemDetailScreen extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -226,7 +232,16 @@ class ItemDetailScreen extends StatelessWidget {
                     style: TextStyle(color: Color(0xFF0D9488)),
                   ),
                   onPressed: () {
-                    // TODO: Navigasi ke Modul 3 (Form Barter)
+                    BarterItemSelectionSheet.show(
+                      context,
+                      target: BarterItem(
+                        id: item.id,
+                        name: item.title,
+                        price: item.price,
+                        category: item.category,
+                        condition: item.condition,
+                      ),
+                    );
                   },
                 ),
               ),
@@ -246,7 +261,30 @@ class ItemDetailScreen extends StatelessWidget {
                   style: const TextStyle(color: Colors.white),
                 ),
                 onPressed: () {
-                  // TODO: Navigasi ke Modul 2 (Form Jadwal) atau Modul 5 (Klaim)
+                  if (item.listingType == 'Hibah') {
+                    // Klaim hibah diajukan dari katalog hibah (Modul 5)
+                    final nim = context.read<AuthViewModel>().currentUser?.nim ?? '';
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => KatalogHibahScreen(currentUserNim: nim),
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MeetupFormScreen(
+                        itemId: int.tryParse(item.id) ?? 0,
+                        itemTitle: item.title,
+                        itemPrice: currencyFormatter.format(item.price),
+                        itemType: 'Jual',
+                        ownerId: int.tryParse(item.ownerId) ?? 0,
+                        ownerName: item.ownerName.isEmpty ? 'Pemilik Barang' : item.ownerName,
+                      ),
+                    ),
+                  );
                 },
               ),
             ),

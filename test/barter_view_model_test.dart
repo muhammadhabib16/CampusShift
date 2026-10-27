@@ -91,7 +91,7 @@ void main() {
 
   group('HomeViewModel', () {
     test('memuat barang terbaru dari service', () async {
-      final viewModel = HomeViewModel(HomeService());
+      final viewModel = HomeViewModel(HomeService(fetchItems: () async => []));
       await viewModel.loadLatestListings();
       expect(viewModel.latestListings.length, 5);
       expect(viewModel.isLoading, isFalse);

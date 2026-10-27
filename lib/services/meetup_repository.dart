@@ -1,17 +1,29 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/meetup.dart';
 import '../models/safe_meet_point.dart';
 import '../utils/haversine.dart';
 
-class MeetupRepository {
+/// Penyimpanan pertemuan (in-memory) Modul 2. Memberi tahu pendengar
+/// (misalnya kartu pertemuan di Beranda) setiap kali data pertemuan berubah.
+class MeetupRepository extends ChangeNotifier {
   // Singleton pattern
   static final MeetupRepository _instance = MeetupRepository._internal();
   factory MeetupRepository() => _instance;
   MeetupRepository._internal();
 
-  // Current logged in user context (Bayu Mutawakkil - NIM 2411522023)
-  static const int currentUserId = 1;
-  static const String currentUserName = 'Bayu Mutawakkil';
-  static const String currentUserNim = '2411522023';
+  // Pengguna yang sedang login. Diisi dari data login lewat [setCurrentUser];
+  // nilai bawaan dipakai pada mode uji tanpa server.
+  static int currentUserId = 1;
+  static String currentUserName = 'Bayu Mutawakkil';
+  static String currentUserNim = '2411522023';
+
+  /// Dipanggil saat masuk ke halaman utama setelah login.
+  static void setCurrentUser({required int id, required String name, required String nim}) {
+    currentUserId = id;
+    currentUserName = name;
+    currentUserNim = nim;
+  }
 
   // Seed Data Safe-Meet Points Resmi Kampus (FR-06 & BR-11)
   final List<SafeMeetPoint> _officialPoints = [
@@ -221,6 +233,20 @@ class MeetupRepository {
     return _meetups.where((m) => m.ownerId == currentUserId).toList();
   }
 
+  /// Pertemuan Dikonfirmasi terdekat milik pengguna (sebagai peminat maupun
+  /// pemilik), untuk kartu serah terima di Beranda. Null bila tidak ada.
+  Meetup? getNextConfirmedMeetup() {
+    ensureInitialized();
+    _checkOverdueMeetups();
+    final confirmed = _meetups
+        .where((m) =>
+            m.isDikonfirmasi &&
+            (m.requesterId == currentUserId || m.ownerId == currentUserId))
+        .toList()
+      ..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
+    return confirmed.isEmpty ? null : confirmed.first;
+  }
+
   Meetup? getMeetupById(int id) {
     ensureInitialized();
     _checkOverdueMeetups();
@@ -274,6 +300,10 @@ class MeetupRepository {
   }) async {
     ensureInitialized();
 
+    if (ownerId == currentUserId) {
+      throw ValidationException('Kamu tidak dapat mengajukan pertemuan untuk barang milikmu sendiri.');
+    }
+
     // Validasi Waktu (BR-07, AC-09)
     final timeValidation = validateMeetupTime(scheduledTime);
     if (!timeValidation.isValid) {
@@ -317,6 +347,7 @@ class MeetupRepository {
     );
 
     _meetups.insert(0, newMeetup);
+    notifyListeners();
     return newMeetup;
   }
 
@@ -359,6 +390,7 @@ class MeetupRepository {
     );
 
     _meetups[index] = updated;
+    notifyListeners();
     return updated;
   }
 
@@ -383,6 +415,7 @@ class MeetupRepository {
 
     // Hapus permanen dari daftar (AC-11)
     _meetups.removeAt(index);
+    notifyListeners();
     return true;
   }
 
@@ -424,6 +457,7 @@ class MeetupRepository {
       }
     }
 
+    notifyListeners();
     return confirmed;
   }
 
@@ -443,6 +477,7 @@ class MeetupRepository {
       cancellationReason: reason,
     );
     _meetups[index] = rejected;
+    notifyListeners();
     return rejected;
   }
 
@@ -466,6 +501,7 @@ class MeetupRepository {
     );
 
     _meetups[index] = cancelled;
+    notifyListeners();
     return cancelled;
   }
 
