@@ -15,7 +15,9 @@ class MapsLauncherService {
 
     // 2. Coba geo URI universal (kompatibel multi-platform / map apps)
     final encodedTitle = Uri.encodeComponent(destinationTitle);
-    final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude($encodedTitle)');
+    final geoUri = Uri.parse(
+      'geo:$latitude,$longitude?q=$latitude,$longitude($encodedTitle)',
+    );
 
     // 3. Fallback browser web Google Maps resmi
     final webMapsUri = Uri.parse(
@@ -24,17 +26,26 @@ class MapsLauncherService {
 
     try {
       if (await canLaunchUrl(googleMapsAppUri)) {
-        return await launchUrl(googleMapsAppUri, mode: LaunchMode.externalApplication);
+        return await launchUrl(
+          googleMapsAppUri,
+          mode: LaunchMode.externalApplication,
+        );
       } else if (await canLaunchUrl(geoUri)) {
         return await launchUrl(geoUri, mode: LaunchMode.externalApplication);
       } else {
         // Fallback browser (AC-12)
-        return await launchUrl(webMapsUri, mode: LaunchMode.externalApplication);
+        return await launchUrl(
+          webMapsUri,
+          mode: LaunchMode.externalApplication,
+        );
       }
     } catch (e) {
       debugPrint('Error launching map intent: $e, falling back to browser URL');
       try {
-        return await launchUrl(webMapsUri, mode: LaunchMode.externalApplication);
+        return await launchUrl(
+          webMapsUri,
+          mode: LaunchMode.externalApplication,
+        );
       } catch (e2) {
         debugPrint('Failed to launch web maps: $e2');
         return false;

@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import '../models/safe_meet_point.dart';
 
 class HaversineHelper {
@@ -18,7 +19,8 @@ class HaversineHelper {
     final lat1Rad = _degreesToRadians(startLatitude);
     final lat2Rad = _degreesToRadians(endLatitude);
 
-    final a = sin(dLat / 2) * sin(dLat / 2) +
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(lat1Rad) * cos(lat2Rad) * sin(dLon / 2) * sin(dLon / 2);
 
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
@@ -60,7 +62,9 @@ class HaversineHelper {
       for (final point in updatedList) {
         point.distanceInMeters = null;
       }
-      updatedList.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      updatedList.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
     }
 
     return updatedList;

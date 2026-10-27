@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+
 import 'safe_meet_point.dart';
 
 class Meetup {
@@ -52,7 +53,10 @@ class Meetup {
   bool get isSelesai => status == 'Selesai';
 
   String get formattedDateTime {
-    final dateStr = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(scheduledTime);
+    final dateStr = DateFormat(
+      'EEEE, d MMMM yyyy',
+      'id_ID',
+    ).format(scheduledTime);
     final timeStr = DateFormat('HH:mm').format(scheduledTime);
     return '$dateStr • $timeStr WIB';
   }
@@ -110,7 +114,9 @@ class Meetup {
       ownerId: json['owner_id'] as int,
       ownerName: json['owner_name'] as String? ?? 'Pemilik Barang',
       ownerNim: json['owner_nim'] as String? ?? '',
-      safeMeetPoint: SafeMeetPoint.fromJson(json['safe_meet_point'] as Map<String, dynamic>),
+      safeMeetPoint: SafeMeetPoint.fromJson(
+        json['safe_meet_point'] as Map<String, dynamic>,
+      ),
       scheduledTime: DateTime.parse(json['scheduled_time'] as String),
       notes: json['notes'] as String? ?? '',
       status: json['status'] as String? ?? 'Diajukan',

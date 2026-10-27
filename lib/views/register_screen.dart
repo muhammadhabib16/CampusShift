@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../shared/widgets/shared_widgets.dart';
+import '../theme/app_tokens.dart';
 import '../viewmodels/auth_view_model.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -11,7 +14,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
-  String? _selectedUniversity = 'Universitas Andalas (UNAND)';
+  String _selectedUniversity = 'Universitas Andalas';
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _nimController = TextEditingController();
@@ -19,7 +22,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   final List<String> _universities = [
-    'Universitas Andalas (UNAND)',
+    'Universitas Andalas',
+    'Universitas Negeri Padang',
   ];
 
   @override
@@ -31,254 +35,209 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _navigateToLogin() {
-    Navigator.of(context).pop();
-  }
-
   Future<void> _register() async {
+    final name = _nameController.text.trim();
+    final nim = _nimController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (name.isEmpty || nim.isEmpty || email.isEmpty || password.isEmpty) {
+      AppSnackBar.showError(context, 'Semua kolom pendaftaran wajib diisi.');
+      return;
+    }
+
+    if (nim.length < 8) {
+      AppSnackBar.showError(
+        context,
+        'Format NIM tidak valid (minimal 8–10 digit).',
+      );
+      return;
+    }
+
     final authViewModel = context.read<AuthViewModel>();
     final success = await authViewModel.register(
-      fullName: _nameController.text,
-      nim: _nimController.text,
-      email: _emailController.text,
-      password: _passwordController.text,
+      fullName: name,
+      nim: nim,
+      email: email,
+      password: password,
     );
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(authViewModel.message ?? '')),
-    );
     if (success) {
-      Navigator.of(context).pop(); // Kembali ke halaman login
+      AppSnackBar.showSuccess(
+        context,
+        authViewModel.message ?? 'Registrasi berhasil! Silakan masuk.',
+      );
+      Navigator.of(context).pop();
+    } else {
+      AppSnackBar.showError(
+        context,
+        authViewModel.message ?? 'Registrasi gagal. Silakan coba lagi.',
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isLoading = context.watch<AuthViewModel>().isLoading;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl,
+            vertical: AppSpacing.md,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 32),
               const Text(
                 'Buat Akun Baru',
                 style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               const Text(
-                'Isi data berikut untuk mulai menikmati barter.',
+                'Lengkapi data mahasiswa untuk bergabung ke ekosistem sirkular CampuShift.',
                 style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black54,
-                  height: 1.5,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textSecondary,
+                  height: 1.45,
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.xl),
 
-              // Nama Lengkap
-              _buildLabel('Nama Lengkap'),
-              const SizedBox(height: 8),
-              _buildTextField(hintText: 'Mellisa Annie', controller: _nameController),
-              const SizedBox(height: 20),
+              AppTextField(
+                label: 'Nama Lengkap',
+                hintText: 'Contoh: Mellisa Annie',
+                controller: _nameController,
+                prefixIcon: const Icon(Icons.person_outline, size: 20),
+              ),
+              const SizedBox(height: AppSpacing.lg),
 
-              // NIM
-              _buildLabel('NIM'),
-              const SizedBox(height: 8),
-              _buildTextField(hintText: '2111522001 (10 Digit NIM)', controller: _nimController),
-              const SizedBox(height: 20),
+              AppTextField(
+                label: 'NIM (Nomor Induk Mahasiswa)',
+                hintText: 'Contoh: 2111522001',
+                controller: _nimController,
+                keyboardType: TextInputType.number,
+                prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+              ),
+              const SizedBox(height: AppSpacing.lg),
 
               // Universitas
-              _buildLabel('Universitas (Fokus Wilayah)'),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedUniversity,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Universitas (Fokus Wilayah)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: const BorderSide(color: Color(0xFF0D9488)),
-                  ),
-                ),
-                items: _universities
-                    .map(
-                      (uni) => DropdownMenuItem(
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedUniversity,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.school_outlined, size: 20),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: 14,
+                      ),
+                    ),
+                    items: _universities.map((uni) {
+                      return DropdownMenuItem(
                         value: uni,
                         child: Text(uni, style: const TextStyle(fontSize: 14)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedUniversity = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Email Kampus
-              _buildLabel('Email Kampus Unand'),
-              const SizedBox(height: 8),
-              _buildTextField(hintText: 'nama@student.unand.ac.id', controller: _emailController),
-              const SizedBox(height: 6),
-              const Padding(
-                padding: EdgeInsets.only(left: 4),
-                child: Text(
-                  'Wajib menggunakan email resmi mahasiswa Unand (@student.unand.ac.id)',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF0D9488)),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Kata Sandi
-              _buildLabel('Kata Sandi'),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: '••••••',
-                  hintStyle: const TextStyle(color: Colors.black38),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: const BorderSide(color: Color(0xFF0D9488)),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      color: Colors.grey,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null)
+                        setState(() => _selectedUniversity = val);
                     },
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: AppSpacing.lg),
 
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : _register,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D9488),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
+              AppTextField(
+                label: 'Email Kampus Unand',
+                hintText: 'nama@student.unand.ac.id',
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                helperText:
+                    'Wajib gunakan email berakhiran @student.unand.ac.id',
+                prefixIcon: const Icon(Icons.email_outlined, size: 20),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              AppTextField(
+                label: 'Kata Sandi',
+                hintText: 'Minimal 8 karakter',
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: AppColors.textSecondary,
+                    size: 20,
                   ),
-                  child: isLoading 
-                    ? const SizedBox(
-                        height: 20, 
-                        width: 20, 
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                      )
-                    : const Text(
-                        'Daftar Sekarang',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                  onPressed: () {
+                    setState(() => _obscurePassword = !_obscurePassword);
+                  },
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.xxl),
+
+              AppPrimaryButton(
+                label: 'Daftar Akun',
+                onPressed: _register,
+                isLoading: isLoading,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
                     'Sudah punya akun? ',
-                    style: TextStyle(color: Colors.black54),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   GestureDetector(
-                    onTap: _navigateToLogin,
+                    onTap: () => Navigator.of(context).pop(),
                     child: const Text(
                       'Masuk',
                       style: TextStyle(
-                        color: Color(0xFF0D9488),
-                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.lg),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String label) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
-      ),
-    );
-  }
-
-  Widget _buildTextField({required String hintText, TextEditingController? controller}) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: const BorderSide(color: Color(0xFF0D9488)),
         ),
       ),
     );

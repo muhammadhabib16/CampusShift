@@ -1,17 +1,23 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
+import '../../core/app_strings.dart';
 import '../../models/handover_token_model.dart';
 import '../../services/handover_service.dart';
+import '../../shared/widgets/shared_widgets.dart';
+import '../../theme/app_tokens.dart';
 
+/// Layar Serah Terima QR & Bukti Digital (Modul 4: Fadel).
+/// Mengimplementasikan alur FR-17 (QR Token sekali pakai 5 menit),
+/// BR-21 (polling status 3s), pembatalan sesi, bukti serah terima tiket,
+/// dan form ulasan reputasi FR-20.
 class SerahTerimaQrScreen extends StatefulWidget {
   final MeetupDetailModel? meetupDetail;
 
-  const SerahTerimaQrScreen({
-    super.key,
-    this.meetupDetail,
-  });
+  const SerahTerimaQrScreen({super.key, this.meetupDetail});
 
   @override
   State<SerahTerimaQrScreen> createState() => _SerahTerimaQrScreenState();
@@ -26,7 +32,8 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
 
   Timer? _countdownTimer;
   Timer? _statusCheckTimer;
-  int _currentScenarioTab = 0; // 0: Aktif (3s), 1: Kedaluwarsa, 2: Sukses Selesai
+  int _currentScenarioTab =
+      0; // 0: Aktif (3s), 1: Kedaluwarsa, 2: Sukses Selesai
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -75,16 +82,14 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
       _startTimers();
     } else {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Gagal membuat sesi QR'),
-          backgroundColor: Colors.red.shade700,
-        ),
+      AppSnackBar.showError(
+        context,
+        result['message'] ?? 'Gagal membuat sesi QR',
       );
     }
   }
 
-  /// Mulai countdown timer per detik dan polling status per 3 detik (FR-21)
+  /// Mulai countdown timer per detik dan polling status per 3 detik (FR-21 / BR-21)
   void _startTimers() {
     _countdownTimer?.cancel();
     _statusCheckTimer?.cancel();
@@ -102,7 +107,9 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
     });
 
     // Polling status setiap 3 detik sesuai FR-21 / BR-21
-    _statusCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+    _statusCheckTimer = Timer.periodic(const Duration(seconds: 3), (
+      timer,
+    ) async {
       if (!mounted || _tokenModel == null || _sessionState != 'active') return;
 
       final statusRes = await HandoverService.checkTokenStatus(
@@ -114,7 +121,9 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
 
       final newStatus = statusRes['status'] ?? 'active';
       if (newStatus == 'used' && _sessionState != 'used') {
-        _onHandoverSuccess(statusRes['proof_number'] ?? _tokenModel?.proofNumber);
+        _onHandoverSuccess(
+          statusRes['proof_number'] ?? _tokenModel?.proofNumber,
+        );
       } else if (newStatus == 'expired' && _sessionState != 'expired') {
         _onTokenExpired();
       } else if (newStatus == 'cancelled' && _sessionState != 'cancelled') {
@@ -125,30 +134,16 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
     });
   }
 
-  /// Handler saat token kedaluwarsa (FR-17: QR diperbarui otomatis saat kedaluwarsa)
+  /// Handler saat token kedaluwarsa (FR-17)
   void _onTokenExpired() {
     setState(() {
       _sessionState = 'expired';
       _currentScenarioTab = 1;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.info_outline, color: Colors.white, size: 20),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Masa berlaku QR 5 menit telah habis. Memperbarui otomatis...',
-                style: TextStyle(fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.orange.shade800,
-        duration: const Duration(seconds: 3),
-      ),
+    AppSnackBar.showInfo(
+      context,
+      'Masa berlaku QR 5 menit telah habis. Memperbarui otomatis...',
     );
 
     // Auto refresh setelah 2 detik agar pengguna melihat transisinya
@@ -178,68 +173,27 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
       });
       _startTimers();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isAuto
-                ? 'QR diperbarui otomatis dengan token baru'
-                : 'QR berhasil diperbarui (Token baru dibuat)',
-          ),
-          backgroundColor: const Color(0xFF0D9488),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      AppSnackBar.showSuccess(
+        context,
+        isAuto
+            ? 'QR diperbarui otomatis dengan token baru'
+            : 'QR berhasil diperbarui (Token baru dibuat)',
       );
     } else {
       setState(() => _isLoading = false);
     }
   }
 
-  /// FR-17 Point 2: DELETE / Batalkan Sesi QR
+  /// FR-17 Point 2: Batalkan Sesi QR dengan ConfirmDialog
   Future<void> _confirmCancelSession() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 24),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Batalkan Sesi QR?',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Token aktif akan dihapus dari server sehingga QR langsung tidak berlaku (FR-17 & BR-21). Status pertemuan tetap Dikonfirmasi dan Anda dapat membuat sesi baru kapan saja.',
-          style: TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Kembali', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ya, Batalkan Sesi'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Batalkan Sesi QR?',
+      message: 'Token aktif akan dihapus dari server sehingga kode QR tidak berlaku lagi. Status pertemuan tetap Dikonfirmasi dan Anda dapat membuat sesi baru kapan saja.',
+      confirmLabel: 'Ya, Batalkan Sesi',
+      cancelLabel: AppStrings.cancel,
+      destructive: true,
+      confirmIcon: Icons.cancel_outlined,
     );
 
     if (confirmed == true && mounted) {
@@ -259,12 +213,9 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
         _sessionState = 'cancelled';
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(res['message'] ?? 'Sesi QR berhasil dibatalkan'),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppSnackBar.showInfo(
+        context,
+        res['message'] ?? 'Sesi QR berhasil dibatalkan',
       );
     }
   }
@@ -288,17 +239,14 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
     setState(() => _currentScenarioTab = index);
 
     if (index == 0) {
-      // 1. Aktif (3s)
       if (_sessionState != 'active') {
         _refreshQrToken();
       }
     } else if (index == 1) {
-      // 2. Kedaluwarsa
       HandoverService.simulateExpired(_meetup.meetupId);
       _countdownTimer?.cancel();
       setState(() => _sessionState = 'expired');
     } else if (index == 2) {
-      // 3. Sukses Selesai
       HandoverService.simulateScanSuccess(_meetup.meetupId);
       _onHandoverSuccess(_tokenModel?.proofNumber);
     }
@@ -308,134 +256,100 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
   void _copyTokenToClipboard() {
     if (_tokenModel == null) return;
     Clipboard.setData(ClipboardData(text: _tokenModel!.token));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Token "${_tokenModel!.token}" disalin ke papan klip'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: const Color(0xFF0D9488),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
+    AppSnackBar.showSuccess(
+      context,
+      'Token "${_tokenModel!.token}" disalin ke papan klip',
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFB),
-      appBar: _buildAppBar(),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Serah Terima QR'),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            onPressed: _showHelpDialog,
+            tooltip: 'Panduan Serah Terima QR',
+          ),
+          const SizedBox(width: AppSpacing.xs),
+        ],
+      ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0D9488)),
-              ),
-            )
+          ? const LoadingState(label: 'Menyiapkan sesi QR terenkripsi...')
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // SIMULASI SKENARIO HANDOVER (Header Banner)
                   _buildSimulationBanner(),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md),
 
                   // TITIK TEMU KAMPUS TERVERIFIKASI
                   _buildMeetingPointCard(),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md),
 
                   // ITEM & PARTNER CARD
                   _buildItemAndPartnerCard(),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md),
 
                   // QR CODE & HANDOVER SESSION CARD (CORE FR-17)
                   _buildQrSessionCard(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // PROTOKOL SERAH TERIMA AMAN
                   _buildSafetyProtocolCard(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xxl),
                 ],
               ),
             ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      scrolledUnderElevation: 1,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A), size: 22),
-        onPressed: () => Navigator.pop(context),
-      ),
-      title: const Text(
-        'Serah Terima Qr',
-        style: TextStyle(
-          color: Color(0xFF0F172A),
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      centerTitle: false,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.help_outline, color: Color(0xFF334155), size: 22),
-          onPressed: _showHelpDialog,
-          tooltip: 'Panduan Serah Terima QR',
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 16, left: 4),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF0F766E),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.person, color: Colors.white, size: 18),
-          ),
-        ),
-      ],
-    );
-  }
-
   /// Banner Simulasi Skenario Handover (BR-19 • BR-20 • BR-21)
   Widget _buildSimulationBanner() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: AppColors.surfaceVariant,
+        borderRadius: AppRadius.medium,
+        border: Border.all(color: AppColors.outline),
       ),
       child: Column(
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.tune, color: Color(0xFF0D9488), size: 16),
-              const SizedBox(width: 6),
-              const Text(
-                'SIMULASI SKENARIO HANDOVER',
+              Icon(Icons.tune_rounded, color: AppColors.primary, size: 16),
+              SizedBox(width: AppSpacing.xs),
+              Text(
+                'SIMULASI SKENARIO SERAH TERIMA',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
+                  color: AppColors.textPrimary,
                   letterSpacing: 0.3,
                 ),
               ),
-              const Spacer(),
-              const Text(
+              Spacer(),
+              Text(
                 'BR-19 • BR-20 • BR-21',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B),
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
@@ -445,7 +359,7 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                   isSelected: _currentScenarioTab == 0,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: _buildScenarioPill(
                   index: 1,
@@ -453,11 +367,11 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                   isSelected: _currentScenarioTab == 1,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: _buildScenarioPill(
                   index: 2,
-                  label: '3. Sukses Selesai',
+                  label: '3. Sukses',
                   isSelected: _currentScenarioTab == 2,
                 ),
               ),
@@ -476,23 +390,15 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
     return GestureDetector(
       onTap: () => _switchScenario(index),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        duration: AppDurations.quick,
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0F766E) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF0F766E).withValues(alpha: 0.25),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          color: isSelected ? AppColors.primary : AppColors.surface,
+          borderRadius: AppRadius.small,
           border: Border.all(
-            color: isSelected ? const Color(0xFF0F766E) : const Color(0xFFCBD5E1),
+            color: isSelected ? AppColors.primary : AppColors.outline,
           ),
+          boxShadow: isSelected ? AppElevation.softShadow : null,
         ),
         child: Center(
           child: Text(
@@ -500,8 +406,8 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-              color: isSelected ? Colors.white : const Color(0xFF475569),
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              color: isSelected ? AppColors.onPrimary : AppColors.textSecondary,
             ),
           ),
         ),
@@ -511,20 +417,8 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
 
   /// Card 1: Titik Temu Kampus Terverifikasi
   Widget _buildMeetingPointCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -532,19 +426,19 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE6F4F1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppColors.primaryContainer,
+                  borderRadius: AppRadius.small,
                 ),
                 child: const Icon(
                   Icons.videocam_outlined,
-                  color: Color(0xFF0D9488),
+                  color: AppColors.primary,
                   size: 22,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -552,56 +446,42 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                     Row(
                       children: [
                         const Text(
-                          'TITIK TEMU KAMPUS TERVERIFIKASI',
+                          'TITIK TEMU TERVERIFIKASI',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF0D9488),
+                            color: AppColors.primary,
                             letterSpacing: 0.4,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            '• Pertemuan Aktif',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF15803D),
-                            ),
-                          ),
-                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        const StatusBadge(status: 'Dikonfirmasi'),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       _meetup.locationTitle,
                       style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Row(
                       children: [
                         const Icon(
                           Icons.verified_user_outlined,
-                          color: Color(0xFF0D9488),
-                          size: 13,
+                          color: AppColors.primary,
+                          size: 14,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpacing.xs),
                         Expanded(
                           child: Text(
                             _meetup.locationSub,
                             style: const TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF64748B),
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -612,48 +492,57 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              color: AppColors.surfaceVariant,
+              borderRadius: AppRadius.small,
+              border: Border.all(color: AppColors.outline),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.access_time_rounded,
-                  color: Color(0xFF0D9488),
+                  color: AppColors.primary,
                   size: 16,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 const Text(
-                  'Jadwal Janji Temu:',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                  'Jadwal:',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpacing.xs),
                 Text(
                   '${_meetup.scheduledDate}, ${_meetup.scheduledTime}',
                   style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE0F2FE),
-                    borderRadius: BorderRadius.circular(6),
+                    color: AppColors.primaryContainer,
+                    borderRadius: AppRadius.pill,
                   ),
                   child: const Text(
-                    'On Time',
+                    'Tepat Waktu',
                     style: TextStyle(
                       fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0284C7),
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onPrimaryContainer,
                     ),
                   ),
                 ),
@@ -667,43 +556,30 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
 
   /// Card 2: Informasi Barang & Profil Pembeli
   Widget _buildItemAndPartnerCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         children: [
-          // Item row
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 68,
-                height: 68,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  color: AppColors.surfaceVariant,
+                  borderRadius: AppRadius.medium,
+                  border: Border.all(color: AppColors.outline),
                 ),
-                child: Center(
+                child: const Center(
                   child: Icon(
-                    Icons.calculate_outlined,
-                    color: Colors.teal.shade700,
-                    size: 34,
+                    Icons.inventory_2_outlined,
+                    color: AppColors.primary,
+                    size: 30,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,56 +587,62 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFCCFBF1),
-                            borderRadius: BorderRadius.circular(6),
+                            color: AppColors.primaryContainer,
+                            borderRadius: AppRadius.small,
                           ),
                           child: Text(
                             _meetup.itemCategory,
                             style: const TextStyle(
                               fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F766E),
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.onPrimaryContainer,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppSpacing.xs),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFEDE9FE),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppRadius.small,
                           ),
                           child: Text(
                             _meetup.itemGrade,
                             style: const TextStyle(
                               fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                               color: Color(0xFF6D28D9),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       _meetup.itemName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       _meetup.itemPrice,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF0D9488),
+                        color: AppColors.primary,
                       ),
                     ),
                   ],
@@ -769,74 +651,23 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
             ],
           ),
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Divider(color: AppColors.outline),
           ),
-          // Partner row
           Row(
             children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: const Color(0xFF0D9488).withValues(alpha: 0.15),
-                    child: const Icon(Icons.person, color: Color(0xFF0D9488), size: 20),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF22C55E),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.5),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          _meetup.partnerName,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.verified, color: Color(0xFF0D9488), size: 14),
-                        const Spacer(),
-                        const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                        const SizedBox(width: 2),
-                        Text(
-                          _meetup.partnerRating.toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'NIM: ${_meetup.partnerNim} • ${_meetup.partnerFaculty} • ${_meetup.partnerCompletedDeals} Transaksi',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
+                child: AvatarWithName(
+                  name: _meetup.partnerName,
+                  subtitle:
+                      'NIM: ${_meetup.partnerNim} • ${_meetup.partnerFaculty}',
+                  radius: 20,
                 ),
+              ),
+              RatingStars(
+                rating: _meetup.partnerRating,
+                reviewCount: _meetup.partnerCompletedDeals,
+                size: 14,
               ),
             ],
           ),
@@ -849,92 +680,67 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
   Widget _buildQrSessionCard() {
     final token = _tokenModel;
 
-    // Jika sesi dibatalkan (FR-17 Point 2 Delete / Sesi Dibatalkan)
+    // Jika sesi dibatalkan
     if (_sessionState == 'cancelled' || token == null) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.red.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+      return AppCard(
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           children: [
             Container(
               width: 56,
               height: 56,
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.cancel_outlined, color: Colors.red.shade600, size: 32),
+              child: const Icon(
+                Icons.cancel_outlined,
+                color: AppColors.error,
+                size: 32,
+              ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpacing.md),
             const Text(
               'Sesi QR Telah Dibatalkan',
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
             const Text(
-              'Token telah dihapus dari server sehingga kode QR langsung tidak dapat dipindai (FR-17 & BR-21). Status pertemuan tetap Dikonfirmasi.',
+              'Token telah dinonaktifkan dari server (FR-17). Status pertemuan tetap Dikonfirmasi dan Anda dapat membuat sesi baru.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: () => _refreshQrToken(),
-              icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-              label: const Text('Buat Sesi QR Baru'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D9488),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.4,
               ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppPrimaryButton(
+              label: 'Buat Sesi QR Baru',
+              icon: Icons.qr_code_2_rounded,
+              onPressed: () => _refreshQrToken(),
             ),
           ],
         ),
       );
     }
 
-    // Jika sesi sudah sukses divalidasi (FR-21 / Used)
+    // Jika sesi sudah berhasil divalidasi
     if (_sessionState == 'used') {
       return _buildSuccessCard(token);
     }
 
     final isExpired = _sessionState == 'expired' || token.isExpired;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isExpired ? Colors.orange.shade300 : const Color(0xFFE2E8F0),
-          width: isExpired ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         children: [
-          // Header Status & Cek tiap 3s
+          // Header Status & Polling 3s
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -946,50 +752,58 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: isExpired
-                            ? Colors.orange.shade700
-                            : const Color(0xFF0D9488),
+                        color: isExpired ? AppColors.accent : AppColors.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Text(
                     isExpired
                         ? '• QR Kedaluwarsa'
                         : '• Menunggu Peminat Memindai QR',
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isExpired
-                          ? Colors.orange.shade800
-                          : const Color(0xFF0D9488),
+                      fontWeight: FontWeight.w700,
+                      color: isExpired ? AppColors.accent : AppColors.primary,
                     ),
                   ),
                 ],
               ),
-              Row(
+              const Row(
                 children: [
-                  const Icon(Icons.sync, color: Color(0xFF64748B), size: 13),
-                  const SizedBox(width: 4),
-                  const Text(
+                  Icon(
+                    Icons.sync_rounded,
+                    color: AppColors.textSecondary,
+                    size: 14,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
                     'Cek tiap 3s',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
 
-          // Countdown Pill (Kedaluwarsa dalam: MM:SS)
+          // Countdown Pill
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.xs,
+            ),
             decoration: BoxDecoration(
-              color: isExpired ? Colors.orange.shade50 : const Color(0xFFE6F4F1),
-              borderRadius: BorderRadius.circular(20),
+              color: isExpired
+                  ? const Color(0xFFFEF3C7)
+                  : AppColors.primaryContainer,
+              borderRadius: AppRadius.pill,
               border: Border.all(
-                color: isExpired ? Colors.orange.shade200 : const Color(0xFFCCFBF1),
+                color: isExpired ? const Color(0xFFFDE68A) : AppColors.outline,
               ),
             ),
             child: Row(
@@ -998,128 +812,102 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                 Icon(
                   Icons.timer_outlined,
                   size: 15,
-                  color: isExpired ? Colors.orange.shade800 : const Color(0xFF0D9488),
+                  color: isExpired
+                      ? const Color(0xFFB45309)
+                      : AppColors.onPrimaryContainer,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpacing.xs),
                 Text(
                   isExpired
-                      ? 'Kedaluwarsa (Memperbarui...)'
+                      ? 'Kedaluwarsa (Memperbarui otomatis...)'
                       : 'Kedaluwarsa dalam: ${token.formattedRemainingTime}',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: isExpired
-                        ? Colors.orange.shade900
-                        : const Color(0xFF0D9488),
+                        ? const Color(0xFFB45309)
+                        : AppColors.onPrimaryContainer,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.lg),
 
-          // QR Code Display
+          // QR Code Frame dengan border primary
           Stack(
             alignment: Alignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 6,
-                    ),
-                  ],
+                  color: AppColors.surface,
+                  borderRadius: AppRadius.large,
+                  border: Border.all(
+                    color: isExpired ? AppColors.outline : AppColors.primary,
+                    width: 2,
+                  ),
+                  boxShadow: AppElevation.softShadow,
                 ),
                 child: Opacity(
-                  opacity: isExpired ? 0.25 : 1.0,
+                  opacity: isExpired ? 0.2 : 1.0,
                   child: QrImageView(
                     data: token.token,
                     version: QrVersions.auto,
                     size: 190.0,
                     eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
-                      color: Color(0xFF0F172A),
+                      color: AppColors.textPrimary,
                     ),
                     dataModuleStyle: const QrDataModuleStyle(
                       dataModuleShape: QrDataModuleShape.square,
-                      color: Color(0xFF0F172A),
+                      color: AppColors.textPrimary,
                     ),
-                    embeddedImage: null,
                   ),
                 ),
               ),
 
-              // Center Logo / Badge on QR
-              if (!isExpired)
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.check_circle_rounded,
-                      color: Color(0xFF0D9488),
-                      size: 26,
-                    ),
-                  ),
-                ),
-
               // Expired Overlay
               if (isExpired)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.textPrimary.withValues(alpha: 0.85),
+                    borderRadius: AppRadius.medium,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.timer_off_outlined, color: Colors.white, size: 28),
-                      const SizedBox(height: 6),
+                      const Icon(
+                        Icons.timer_off_outlined,
+                        color: AppColors.onPrimary,
+                        size: 32,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
                       const Text(
                         'QR Kedaluwarsa',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          color: AppColors.onPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       const Text(
-                        'Token kedaluwarsa setelah 5 menit',
-                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                        'Token habis masa berlaku 5 menit',
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
                       ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () => _refreshQrToken(),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0D9488),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Perbarui Sekarang',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      const SizedBox(height: AppSpacing.md),
+                      ElevatedButton.icon(
+                        onPressed: () => _refreshQrToken(),
+                        icon: const Icon(Icons.refresh_rounded, size: 16),
+                        label: const Text('Perbarui Sekarang'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.onPrimary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.xs,
                           ),
                         ),
                       ),
@@ -1128,25 +916,28 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                 ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.lg),
 
-          // Token Otentikasi Sekali Pakai (One-Time Nonce)
+          // Token Nonce Sekali Pakai
           const Text(
             'TOKEN OTENTIKASI SEKALI PAKAI (ONE-TIME NONCE)',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF64748B),
+              color: AppColors.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.xs),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             decoration: BoxDecoration(
-              color: const Color(0xFFE6F4F1),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFCCFBF1)),
+              color: AppColors.primaryContainer,
+              borderRadius: AppRadius.small,
+              border: Border.all(color: AppColors.outline),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1154,9 +945,9 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                 const Icon(
                   Icons.vpn_key_outlined,
                   size: 15,
-                  color: Color(0xFF0D9488),
+                  color: AppColors.primary,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
                   token.token,
                   style: const TextStyle(
@@ -1164,193 +955,213 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.0,
-                    color: Color(0xFF0F172A),
+                    color: AppColors.onPrimaryContainer,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
 
-          // Linear Progress Bar (5 menit countdown)
+          // Linear Progress Bar
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadius.pill,
             child: LinearProgressIndicator(
               value: token.progressRatio,
-              minHeight: 5,
-              backgroundColor: const Color(0xFFE2E8F0),
+              minHeight: 6,
+              backgroundColor: AppColors.outline,
               valueColor: AlwaysStoppedAnimation<Color>(
-                isExpired ? Colors.orange : const Color(0xFF0D9488),
+                isExpired ? AppColors.accent : AppColors.primary,
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
 
-          // Instruksi
           Text(
-            'Tunjukkan layar ini kepada ${_meetup.partnerName} untuk dipindai via aplikasi CampuShift miliknya',
+            'Tunjukkan layar ini kepada ${_meetup.partnerName} untuk dipindai saat bertemu di Safe-Meet Point.',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 11,
-              color: Color(0xFF64748B),
+              color: AppColors.textSecondary,
               height: 1.3,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.lg),
 
-          // Action Buttons: Perbarui QR & Copy
+          // Action Buttons: Perbarui & Salin
           Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _refreshQrToken(),
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text(
-                      'Perbarui QR',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0D9488),
-                      backgroundColor: const Color(0xFFE6F4F1),
-                      side: const BorderSide(color: Color(0xFF0D9488), width: 1.2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
+                child: AppSecondaryButton(
+                  label: 'Perbarui QR',
+                  icon: Icons.refresh_rounded,
+                  onPressed: () => _refreshQrToken(),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               Container(
-                height: 44,
-                width: 44,
+                height: 52,
+                width: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                  color: AppColors.surfaceVariant,
+                  borderRadius: AppRadius.medium,
+                  border: Border.all(color: AppColors.outline),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.copy_rounded, color: Color(0xFF0F766E), size: 20),
+                  icon: const Icon(
+                    Icons.copy_rounded,
+                    color: AppColors.primary,
+                  ),
                   onPressed: _copyTokenToClipboard,
                   tooltip: 'Salin Token',
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
 
-          // FR-17 Point 2: Tombol Batalkan Sesi QR
-          SizedBox(
-            width: double.infinity,
-            child: TextButton.icon(
-              onPressed: _confirmCancelSession,
-              icon: Icon(Icons.cancel_outlined, size: 16, color: Colors.red.shade600),
-              label: Text(
-                'Batalkan Sesi QR',
-                style: TextStyle(
-                  color: Colors.red.shade600,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+          // Tombol Batalkan Sesi QR
+          AppSecondaryButton(
+            label: 'Batalkan Sesi QR',
+            icon: Icons.cancel_outlined,
+            isDestructive: true,
+            onPressed: _confirmCancelSession,
           ),
         ],
       ),
     );
   }
 
-  /// Card saat transaksi serah terima berhasil
+  /// Card saat transaksi serah terima berhasil (Gaya Tiket Digital)
   Widget _buildSuccessCard(HandoverTokenModel token) {
     return Container(
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF22C55E).withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: AppRadius.large,
+        border: Border.all(color: AppColors.outline),
+        boxShadow: AppElevation.softShadow,
       ),
       child: Column(
         children: [
+          // Header Tiket
           Container(
-            width: 64,
-            height: 64,
+            padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: const BoxDecoration(
-              color: Color(0xFFDCFCE7),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check_circle_rounded,
-              color: Color(0xFF16A34A),
-              size: 44,
-            ),
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'Serah Terima Berhasil!',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'QR telah berhasil divalidasi oleh ${_meetup.partnerName}. Transaksi dinyatakan Selesai.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.4),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              color: AppColors.primaryContainer,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.largeValue),
+              ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'No. Bukti Digital (BR-24):',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                const Icon(
+                  Icons.verified_rounded,
+                  color: AppColors.primary,
+                  size: 28,
                 ),
-                Text(
-                  token.proofNumber ?? 'PRF-202610-8942',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'BUKTI SERAH TERIMA DIGITAL',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onPrimaryContainer,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      Text(
+                        token.proofNumber ?? 'PRF-202610-8942',
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.copy_rounded,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    final proof = token.proofNumber ?? 'PRF-202610-8942';
+                    Clipboard.setData(ClipboardData(text: proof));
+                    AppSnackBar.showSuccess(
+                      context,
+                      'Nomor bukti $proof disalin ke papan klip',
+                    );
+                  },
+                  tooltip: 'Salin Nomor Bukti',
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Membuka Form Ulasan (FR-20)...'),
-                  backgroundColor: Color(0xFF0D9488),
+
+          // Garis Putus-Putus Perforasi Tiket
+          Row(
+            children: List.generate(
+              30,
+              (index) => Expanded(
+                child: Container(
+                  height: 2,
+                  color: index.isEven ? AppColors.outline : Colors.transparent,
                 ),
-              );
-            },
-            icon: const Icon(Icons.star_outline_rounded, size: 18),
-            label: Text('Beri Ulasan untuk ${_meetup.partnerName}'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0D9488),
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+
+          // Isi Tiket
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFDCFCE7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.success,
+                    size: 38,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const Text(
+                  'Serah Terima Berhasil!',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'QR telah divalidasi oleh ${_meetup.partnerName}. Transaksi dinyatakan Selesai sesuai BR-24.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppPrimaryButton(
+                  label: 'Beri Ulasan untuk ${_meetup.partnerName}',
+                  icon: Icons.star_rounded,
+                  onPressed: () => _showReviewBottomSheet(_meetup.partnerName),
+                ),
+              ],
             ),
           ),
         ],
@@ -1360,102 +1171,42 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
 
   /// Card 4: Protokol Serah Terima Aman
   Widget _buildSafetyProtocolCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
-              Icon(Icons.shield_outlined, color: Color(0xFF0D9488), size: 20),
-              SizedBox(width: 8),
+          const Row(
+            children: [
+              Icon(Icons.shield_outlined, color: AppColors.primary, size: 20),
+              SizedBox(width: AppSpacing.sm),
               Text(
                 'Protokol Serah Terima Aman',
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-
-          // Step 1
+          const SizedBox(height: AppSpacing.md),
           _buildProtocolStep(
             number: '1',
-            title: 'Inspeksi Kondisi',
-            description:
-                'Persilakan pembeli mencoba kalkulator, cek layar display dan kelengkapan tutup sebelum memindai QR.',
+            title: 'Inspeksi Kondisi Fisik',
+            description: 'Persilakan peminat memeriksa kelengkapan barang sebelum kode QR dipindai.',
           ),
-          const SizedBox(height: 10),
-
-          // Step 2
+          const SizedBox(height: AppSpacing.sm),
           _buildProtocolStep(
             number: '2',
-            title: 'Terima Uang Tunai Terlebih Dahulu',
-            description:
-                'Pastikan Anda telah memegang uang tunai ${_meetup.itemPrice} pas sebelum mengizinkan kode QR ini dipindai.',
+            title: 'Terima Pembayaran / Barang Barter',
+            description: 'Pastikan Anda telah memegang uang pas atau barang tukar sebelum scan QR.',
           ),
-          const SizedBox(height: 10),
-
-          // Step 3
+          const SizedBox(height: AppSpacing.sm),
           _buildProtocolStep(
             number: '3',
             title: 'Verifikasi Instan',
-            description:
-                'Begitu pemindai mitra membaca kode QR, transaksi otomatis dinyatakan selesai dan sistem tidak mengizinkan pembatalan sepihak (BR-20).',
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
-          ),
-
-          // Footer: Butuh bantuan petugas jaga?
-          Row(
-            children: [
-              const Icon(
-                Icons.support_agent_outlined,
-                size: 16,
-                color: Color(0xFF64748B),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'Butuh bantuan petugas jaga?',
-                style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Menghubungi petugas pos satpam kampus...'),
-                      backgroundColor: Color(0xFF0D9488),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Panggil Petugas',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0D9488),
-                  ),
-                ),
-              ),
-            ],
+            description: 'Setelah dipindai, status otomatis Selesai dan tidak dapat dibatalkan sepihak (BR-20).',
           ),
         ],
       ),
@@ -1473,33 +1224,39 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
         Container(
           width: 22,
           height: 22,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE6F4F1),
+          decoration: const BoxDecoration(
+            color: AppColors.primaryContainer,
             shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
           ),
           child: Center(
             child: Text(
               number,
               style: const TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0D9488),
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: const TextStyle(fontSize: 12, color: Color(0xFF334155), height: 1.35),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                height: 1.35,
+              ),
               children: [
                 TextSpan(
                   text: '$title: ',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-                TextSpan(text: description),
+                TextSpan(
+                  text: description,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
               ],
             ),
           ),
@@ -1515,10 +1272,12 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
       isDismissible: false,
       enableDrag: false,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.largeValue),
+        ),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1529,50 +1288,144 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
                 color: Color(0xFFDCFCE7),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check, color: Color(0xFF16A34A), size: 36),
+              child: const Icon(
+                Icons.check_rounded,
+                color: AppColors.success,
+                size: 36,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             const Text(
               'Serah Terima Berhasil!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               'Barang "${_meetup.itemName}" telah sah diserahkan ke ${_meetup.partnerName}.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.surfaceVariant,
+                borderRadius: AppRadius.small,
               ),
               child: Text(
                 'No. Bukti: $proofNumber',
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   fontSize: 12,
                   fontFamily: 'monospace',
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D9488),
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('Tutup'),
+            const SizedBox(height: AppSpacing.lg),
+            AppPrimaryButton(
+              label: 'Tutup',
+              onPressed: () => Navigator.pop(ctx),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Form Ulasan & Reputasi (FR-20)
+  void _showReviewBottomSheet(String partnerName) {
+    double selectedRating = 5.0;
+    final reviewController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.largeValue),
+        ),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacing.xl,
+              right: AppSpacing.xl,
+              top: AppSpacing.xl,
+              bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Ulas $partnerName',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'Beri nilai untuk membangun rasa percaya di komunitas CampuShift.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Center(
+                  child: RatingStars(
+                    rating: selectedRating,
+                    interactive: true,
+                    size: 36,
+                    onRatingChanged: (newRating) {
+                      setModalState(() => selectedRating = newRating);
+                    },
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppTextField(
+                  label: 'Ulasan Transaksi',
+                  hintText:
+                      'Tuliskan pengalaman bertransaksi dengan rekan ini...',
+                  controller: reviewController,
+                  maxLines: 3,
+                  maxLength: 500,
+                  showCounter: true,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppPrimaryButton(
+                  label: 'Kirim Ulasan',
+                  icon: Icons.send_rounded,
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    AppSnackBar.showSuccess(
+                      this.context,
+                      'Ulasan berhasil dikirim. Terima kasih telah menjaga keamanan kampus!',
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -1582,31 +1435,38 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.info_outline, color: Color(0xFF0D9488)),
-            SizedBox(width: 8),
-            Text('Aturan Serah Terima QR', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.large),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: AppColors.primary),
+            SizedBox(width: AppSpacing.sm),
+            Text(
+              'Aturan Serah Terima QR',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
           ],
         ),
-        content: SingleChildScrollView(
+        content: const SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
-            children: const [
+            children: [
               Text(
                 'FR-17 & BR-21 Aturan Token QR:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
-              SizedBox(height: 6),
+              SizedBox(height: AppSpacing.xs),
               Text(
                 '• Token berlaku 5 menit (sekali pakai).\n'
                 '• Hanya ada 1 token aktif per pertemuan.\n'
                 '• Meminta token baru menonaktifkan token sebelumnya.\n'
                 '• Membatalkan sesi menghapus token aktif tanpa mengubah status pertemuan.\n'
                 '• Layar memeriksa status ke server tiap 3 detik (FR-21).',
-                style: TextStyle(fontSize: 12, color: Color(0xFF334155), height: 1.4),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
               ),
             ],
           ),
@@ -1614,7 +1474,7 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Mengerti', style: TextStyle(color: Color(0xFF0D9488), fontWeight: FontWeight.bold)),
+            child: const Text('Mengerti'),
           ),
         ],
       ),

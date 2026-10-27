@@ -5,7 +5,8 @@ import 'item_model.dart';
 class ListingSummary {
   final String id;
   final String title;
-  final String category; // Buku & Referensi, Furnitur Kos, Elektronik, Alat Perkuliahan
+  final String
+  category; // Buku & Referensi, Furnitur Kos, Elektronik, Alat Perkuliahan
   final String faculty;
   final int price;
   final int ownerId;
@@ -51,12 +52,12 @@ class ListingSummary {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'category': category,
-        'faculty': faculty,
-        'price': price,
-        'owner_id': ownerId,
-        'owner_name': ownerName,
-      };
+    'id': id,
+    'title': title,
+    'category': category,
+    'faculty': faculty,
+    'price': price,
+    'owner_id': ownerId,
+    'owner_name': ownerName,
+  };
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../theme/app_tokens.dart';
+import '../viewmodels/auth_view_model.dart';
 import 'main_screen.dart';
 import 'onboarding_screen.dart';
-import '../viewmodels/auth_view_model.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -11,7 +13,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
@@ -23,11 +26,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeIn),
-    );
-    _scaleAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    _fadeAnim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeIn));
+    _scaleAnim = Tween<double>(begin: 0.88, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: AppDurations.inCurve),
     );
     _animController.forward();
 
@@ -38,13 +42,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Future<void> _openNextScreen() async {
     final results = await Future.wait([
       context.read<AuthViewModel>().restoreSession(),
-      Future.delayed(const Duration(seconds: 3)),
+      Future.delayed(const Duration(milliseconds: 2200)),
     ]);
     if (!mounted) return;
     final loggedIn = results.first as bool;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => loggedIn ? const MainScreen() : const OnboardingScreen(),
+        builder: (_) =>
+            loggedIn ? const MainScreen() : const OnboardingScreen(),
       ),
     );
   }
@@ -58,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D9488),
+      backgroundColor: AppColors.primary,
       body: FadeTransition(
         opacity: _fadeAnim,
         child: ScaleTransition(
@@ -70,53 +75,57 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 120,
-                      height: 120,
+                      width: 104,
+                      height: 104,
                       decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.white,
+                          color: Colors.white.withValues(alpha: 0.4),
                           width: 2.0,
                         ),
                       ),
                       child: const Center(
                         child: Icon(
-                          Icons.recycling,
+                          Icons.recycling_rounded,
                           color: Colors.white,
-                          size: 60,
+                          size: 56,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.xl),
                     const Text(
                       'CampuShift',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
+                    const SizedBox(height: 6),
+                    Text(
                       'Ekonomi Sirkular Kampusmu',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Align(
+              Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: EdgeInsets.only(bottom: 32.0),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
                   child: Text(
-                    'KARYA ANAK BANGSA • v1.0',
+                    'UNIVERSITAS ANDALAS',
                     style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      letterSpacing: 1.2,
+                      color: Colors.white.withValues(alpha: 0.65),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5,
                     ),
                   ),
                 ),

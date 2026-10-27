@@ -9,10 +9,10 @@ class SocialGrantService {
   final ApiClient _client;
 
   Future<List<SocialGrant>> fetchActiveGrants({String? category}) async {
-    final json = await _client.get('/grants', query: {
-      'status': 'Active',
-      'category': ?category,
-    });
+    final json = await _client.get(
+      '/grants',
+      query: {'status': 'Active', 'category': ?category},
+    );
     return (json as List)
         .map((e) => SocialGrant.fromJson(e as Map<String, dynamic>))
         .toList();

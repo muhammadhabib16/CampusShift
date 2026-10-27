@@ -30,7 +30,8 @@ class GrantNotificationService {
     await _plugin.show(
       id: claimPassCode.hashCode,
       title: 'Klaim hibah disetujui!',
-      body: 'Pengajuan untuk "$itemName" diterima. Tunjukkan kode $claimPassCode saat pengambilan.',
+      body:
+          'Pengajuan untuk "$itemName" diterima. Tunjukkan kode $claimPassCode saat pengambilan.',
       notificationDetails: details,
     );
   }

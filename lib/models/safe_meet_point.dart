@@ -1,7 +1,8 @@
 class SafeMeetPoint {
   final int id;
   final String name;
-  final String category; // 'Pos Satpam', 'Perpustakaan', 'Gedung Pusat', 'Selasar'
+  final String
+  category; // 'Pos Satpam', 'Perpustakaan', 'Gedung Pusat', 'Selasar'
   final double latitude;
   final double longitude;
   final String description;
@@ -47,7 +48,8 @@ class SafeMeetPoint {
       longitude: (json['longitude'] as num).toDouble(),
       description: json['description'] as String? ?? '',
       type: json['type'] as String? ?? 'Official',
-      operationalHours: json['operational_hours'] as String? ?? '07.00 - 21.00 WIB',
+      operationalHours:
+          json['operational_hours'] as String? ?? '07.00 - 21.00 WIB',
       landmark: json['landmark'] as String? ?? '',
       safetyFeatures: json['safety_features'] != null
           ? List<String>.from(json['safety_features'] as List)

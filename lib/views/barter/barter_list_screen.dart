@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../core/app_strings.dart';
 import '../../models/barter_deal.dart';
+import '../../shared/widgets/shared_widgets.dart';
+import '../../theme/app_tokens.dart';
 import '../../viewmodels/barter_view_model.dart';
 import 'barter_confirmation_screen.dart';
 import 'widgets/barter_visuals.dart';
@@ -13,36 +17,32 @@ class BarterListScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.surface,
           elevation: 0,
           title: const Text(
             'Barter Saya',
             style: TextStyle(
-              color: Colors.black87,
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
             ),
           ),
-          centerTitle: true,
           bottom: const TabBar(
-            labelColor: Color(0xFF0D9488),
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Color(0xFF0D9488),
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorColor: AppColors.primary,
             indicatorWeight: 3,
-            labelStyle: TextStyle(fontWeight: FontWeight.bold),
+            labelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             tabs: [
-              Tab(text: 'Dikirim'),
-              Tab(text: 'Diterima'),
+              Tab(text: 'Tawaran Dikirim'),
+              Tab(text: 'Tawaran Diterima'),
             ],
           ),
         ),
         body: const TabBarView(
-          children: [
-            _BarterList(sent: true),
-            _BarterList(sent: false),
-          ],
+          children: [_BarterList(sent: true), _BarterList(sent: false)],
         ),
       ),
     );
@@ -59,109 +59,130 @@ class _BarterList extends StatelessWidget {
     final barters = sent ? viewModel.sentDeals : viewModel.receivedDeals;
 
     if (barters.isEmpty) {
-      return const Center(
-        child: Text('Belum ada tawaran', style: TextStyle(color: Colors.grey)),
+      return const EmptyState(
+        title: AppStrings.emptyBarterTitle,
+        description: AppStrings.emptyBarterDesc,
+        icon: Icons.swap_horiz_rounded,
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: barters.length,
-      separatorBuilder: (context, index) => const Divider(height: 24, color: Color(0xFFEEEEEE)),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
       itemBuilder: (context, index) {
         final barter = barters[index];
-        return _buildBarterItem(context, barter);
+        return _buildBarterCard(context, barter);
       },
     );
   }
 
-  Widget _buildBarterItem(BuildContext context, BarterDeal data) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header (User & Status)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 12,
-                  backgroundColor: Colors.grey,
-                  child: Icon(Icons.person, size: 16, color: Colors.white),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  data.partnerName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Colors.black87,
+  Widget _buildBarterCard(BuildContext context, BarterDeal data) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BarterConfirmationScreen(dealId: data.id),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Mitra dan Status Badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: AppColors.primaryContainer,
+                    child: const Icon(
+                      Icons.person,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
                   ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    data.partnerName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              StatusBadge(status: data.status, compact: true),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Komparasi Dua Barang Berdampingan (Section 5.4)
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: AppRadius.medium,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildAssetIcon(
+                  data.myItem.name,
+                  BarterVisuals.iconForCategory(data.myItem.category),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Icon(
+                    Icons.swap_horiz_rounded,
+                    color: AppColors.primary,
+                    size: 24,
+                  ),
+                ),
+                _buildAssetIcon(
+                  data.partnerItem.name,
+                  BarterVisuals.iconForCategory(data.partnerItem.category),
                 ),
               ],
             ),
-            Text(
-              data.status,
-              style: TextStyle(
-                color: BarterVisuals.colorForDealStatus(data.status),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Assets
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildAssetIcon(data.myItem.name, BarterVisuals.iconForCategory(data.myItem.category)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Icon(Icons.swap_horiz, color: Colors.grey.shade400, size: 20),
-            ),
-            _buildAssetIcon(
-              data.partnerItem.name,
-              BarterVisuals.iconForCategory(data.partnerItem.category),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Footer (Date & Detail Link)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              data.dateLabel,
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-              ),
-            ),
-            GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => BarterConfirmationScreen(dealId: data.id),
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Footer Tanggal dan Detail Link
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                data.dateLabel,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
                 ),
               ),
-              child: const Row(
+              const Row(
                 children: [
                   Text(
-                    'Lihat Detail',
+                    'Lihat Kesepakatan',
                     style: TextStyle(
-                      color: Color(0xFF0D9488),
+                      color: AppColors.primary,
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Icon(Icons.chevron_right, size: 16, color: Color(0xFF0D9488)),
+                  SizedBox(width: 4),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -170,15 +191,16 @@ class _BarterList extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.surface,
+              borderRadius: AppRadius.small,
+              border: Border.all(color: AppColors.outline),
             ),
-            child: Icon(icon, color: Colors.grey.shade600, size: 24),
+            child: Icon(icon, color: AppColors.primary, size: 20),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               label,
@@ -186,7 +208,8 @@ class _BarterList extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 12,
-                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
           ),

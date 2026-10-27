@@ -36,8 +36,10 @@ class GrantClaimService {
   /// Sorting dilakukan di backend (query param) agar tetap konsisten
   /// walau datanya besar — bukan di-sort manual di sisi client.
   Future<List<GrantClaim>> fetchClaimQueue(String grantId) async {
-    final json = await _client
-        .get('/grants/$grantId/claims', query: {'sort': 'urgency_then_date'});
+    final json = await _client.get(
+      '/grants/$grantId/claims',
+      query: {'sort': 'urgency_then_date'},
+    );
     return (json as List)
         .map((e) => GrantClaim.fromJson(e as Map<String, dynamic>))
         .toList();

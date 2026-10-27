@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../models/grant_claim.dart';
 import '../services/grant_claim_service.dart';
 import '../services/grant_notification_service.dart';
@@ -67,10 +68,15 @@ class GrantClaimViewModel extends ChangeNotifier {
 
   /// FR-24 + FR-25: approve lalu picu notifikasi lokal untuk pemohon.
   /// Lihat catatan keterbatasan tanpa-FCM di GrantNotificationService.
-  Future<void> approveClaim(GrantClaim claim, {required String itemName}) async {
+  Future<void> approveClaim(
+    GrantClaim claim, {
+    required String itemName,
+  }) async {
     try {
       final updated = await _service.approveClaim(claim.id);
-      claimQueue = claimQueue.map((c) => c.id == updated.id ? updated : c).toList();
+      claimQueue = claimQueue
+          .map((c) => c.id == updated.id ? updated : c)
+          .toList();
       notifyListeners();
       if (updated.approval == ClaimApproval.approved &&
           updated.digitalClaimPassCode != null) {
@@ -88,7 +94,9 @@ class GrantClaimViewModel extends ChangeNotifier {
   Future<void> rejectClaim(GrantClaim claim) async {
     try {
       final updated = await _service.rejectClaim(claim.id);
-      claimQueue = claimQueue.map((c) => c.id == updated.id ? updated : c).toList();
+      claimQueue = claimQueue
+          .map((c) => c.id == updated.id ? updated : c)
+          .toList();
       notifyListeners();
     } catch (e) {
       errorMessage = 'Gagal menolak klaim.';

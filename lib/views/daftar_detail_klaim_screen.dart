@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../core/app_strings.dart';
 import '../models/grant_claim.dart';
 import '../models/social_grant.dart';
+import '../shared/widgets/shared_widgets.dart';
+import '../theme/app_tokens.dart';
+import '../utils/formatters.dart';
 import '../viewmodels/grant_claim_viewmodel.dart';
+import 'digital_claim_pass_screen.dart';
 
-/// Layar "daftar-detail-klaim" — sisi donatur: FR-23 (antrean klaim,
-/// terurut urgensi+tanggal dari backend) & FR-24 (approve/reject).
+/// Layar Antrean Klaim Hibah (Sisi Donatur) — FR-23 (antrean klaim terurut urgensi+tanggal)
+/// dan FR-24 (persetujuan/penolakan pemohon klaim).
 class DaftarDetailKlaimScreen extends StatefulWidget {
   const DaftarDetailKlaimScreen({super.key, required this.grant});
   final SocialGrant grant;
 
   @override
-  State<DaftarDetailKlaimScreen> createState() => _DaftarDetailKlaimScreenState();
+  State<DaftarDetailKlaimScreen> createState() =>
+      _DaftarDetailKlaimScreenState();
 }
 
 class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen> {
@@ -26,34 +33,49 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<GrantClaimViewModel>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F6),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        title: const Text('Antrean Pemohon Klaim'),
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        title: const Text('Pemohon Klaim',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
       ),
       body: Column(
         children: [
+          // Header Barang Donasi
           _Header(grant: widget.grant, total: vm.claimQueue.length),
+
+          // Daftar Antrean atau State (PRD 2.10)
           Expanded(
             child: vm.isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const LoadingState(label: 'Memuat antrean pengajuan klaim…')
+                : vm.errorMessage != null
+                ? ErrorState(
+                    title: 'Gagal Memuat Antrean',
+                    message: vm.errorMessage!,
+                    onRetry: () => context
+                        .read<GrantClaimViewModel>()
+                        .loadClaimQueue(widget.grant.id),
+                  )
                 : vm.claimQueue.isEmpty
-                    ? const Center(child: Text('Belum ada pengajuan klaim.'))
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: vm.claimQueue.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 14),
-                        itemBuilder: (context, i) => _ClaimCard(
-                          claim: vm.claimQueue[i],
-                          // Urutan #0 dari backend = paling prioritas
-                          // (sudah di-sort urgensi+tanggal, lihat FR-23).
-                          highlighted: i == 0,
-                          itemName: widget.grant.itemName,
-                        ),
-                      ),
+                ? const EmptyState(
+                    icon: Icons.inbox_outlined,
+                    title: 'Belum Ada Pengajuan Klaim',
+                    description: 'Belum ada mahasiswa yang mengajukan klaim untuk barang hibah ini.',
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    itemCount: vm.claimQueue.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.md),
+                    itemBuilder: (context, i) => _ClaimCard(
+                      queueNumber: i + 1,
+                      claim: vm.claimQueue[i],
+                      grant: widget.grant,
+                      isHighestPriority: i == 0,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -69,38 +91,71 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
+      color: AppColors.surface,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.small,
             child: SizedBox(
-              width: 48,
-              height: 48,
+              width: 52,
+              height: 52,
               child: grant.photoUrl.isEmpty
-                  ? Container(color: Colors.grey.shade200)
-                  : Image.network(grant.photoUrl, fit: BoxFit.cover),
+                  ? Container(
+                      color: AppColors.surfaceVariant,
+                      child: const Icon(
+                        Icons.volunteer_activism_outlined,
+                        color: AppColors.primary,
+                        size: 26,
+                      ),
+                    )
+                  : Image.network(
+                      grant.photoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: AppColors.surfaceVariant,
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(grant.itemName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                RichText(
-                  text: TextSpan(
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                    children: [
-                      const TextSpan(text: 'Total pengajuan masuk: '),
-                      TextSpan(
-                        text: '$total Pemohon',
-                        style:
-                            const TextStyle(color: Color(0xFF0D9488), fontWeight: FontWeight.bold),
-                      ),
-                    ],
+                Text(
+                  grant.itemName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Text(
+                      'Total Antrean: ',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      '$total Pemohon',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -112,136 +167,331 @@ class _Header extends StatelessWidget {
 }
 
 class _ClaimCard extends StatelessWidget {
-  const _ClaimCard({required this.claim, required this.highlighted, required this.itemName});
+  const _ClaimCard({
+    required this.queueNumber,
+    required this.claim,
+    required this.grant,
+    required this.isHighestPriority,
+  });
+
+  final int queueNumber;
   final GrantClaim claim;
-  final bool highlighted;
-  final String itemName;
+  final SocialGrant grant;
+  final bool isHighestPriority;
+
+  String _urgencyLabel(ClaimUrgency u) => switch (u) {
+    ClaimUrgency.mendesak => 'Mendesak',
+    ClaimUrgency.sedang => 'Sedang',
+    ClaimUrgency.rendah => 'Rendah',
+  };
+
+  Color _urgencyColor(ClaimUrgency u) => switch (u) {
+    ClaimUrgency.mendesak => AppColors.error,
+    ClaimUrgency.sedang => AppColors.accent,
+    ClaimUrgency.rendah => AppColors.primary,
+  };
+
+  Color _urgencyBgColor(ClaimUrgency u) => switch (u) {
+    ClaimUrgency.mendesak => const Color(0xFFFEE2E2),
+    ClaimUrgency.sedang => const Color(0xFFFEF3C7),
+    ClaimUrgency.rendah => AppColors.primaryContainer,
+  };
 
   @override
   Widget build(BuildContext context) {
-    final applicant = claim.applicant; // ApplicantSummary? — lihat models/grant_claim.dart
-    final initial = (applicant != null && applicant.name.isNotEmpty)
-        ? applicant.name.substring(0, 1)
-        : '?';
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: highlighted ? const Color(0xFF0D9488) : Colors.grey.shade200,
-          width: highlighted ? 1.5 : 1,
-        ),
-      ),
+    final applicant = claim.applicant;
+    final applicantName = applicant?.name ?? 'Pemohon #$queueNumber';
+    final applicantNim = applicant?.nim ?? '-';
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Baris Pemohon & Nomor Antrean
           Row(
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.grey.shade300,
-                backgroundImage:
-                    applicant?.photoUrl != null ? NetworkImage(applicant!.photoUrl!) : null,
-                child: applicant?.photoUrl == null ? Text(initial) : null,
+              // Badge Nomor Urut
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isHighestPriority
+                      ? AppColors.primary
+                      : AppColors.surfaceVariant,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    '#$queueNumber',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: isHighestPriority
+                          ? AppColors.onPrimary
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
+
+              // Avatar & Identitas
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: AvatarWithName(
+                  name: applicantName,
+                  subtitle: 'NIM: $applicantNim',
+                  radius: 18,
+                ),
+              ),
+
+              // Badge Urgensi
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: _urgencyBgColor(claim.urgency),
+                  borderRadius: AppRadius.pill,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(applicant?.name ?? 'Pemohon',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text('NIM: ${applicant?.nim ?? '-'}',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                    Icon(
+                      claim.urgency == ClaimUrgency.mendesak
+                          ? Icons.priority_high_rounded
+                          : Icons.schedule_rounded,
+                      size: 12,
+                      color: _urgencyColor(claim.urgency),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _urgencyLabel(claim.urgency),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: _urgencyColor(claim.urgency),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Text(_timeAgo(claim.createdAt),
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
+
+          // Kotak Alasan Kebutuhan
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration:
-                BoxDecoration(color: const Color(0xFFF5F4F1), borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: AppRadius.medium,
+              border: Border.all(color: AppColors.outline),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Alasan Kebutuhan',
-                    style: TextStyle(
-                        color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(claim.justificationText, maxLines: 3, overflow: TextOverflow.ellipsis),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Justifikasi Akademik:',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      formatWaktuRelatif(claim.createdAt),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  claim.justificationText,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textPrimary,
+                    height: 1.4,
+                  ),
+                ),
                 if (claim.voiceNoteUrl != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   const _VoiceNotePlayer(),
                 ],
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: ElevatedButton(
-                    onPressed: claim.approval == ClaimApproval.pending
-                        ? () => context
-                            .read<GrantClaimViewModel>()
-                            .approveClaim(claim, itemName: itemName)
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D9488),
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                    ),
-                    child: Text(
-                      claim.approval == ClaimApproval.approved ? 'Disetujui' : 'Setujui Penerima',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Tombol Aksi: Setujui & Tolak
+          if (claim.approval == ClaimApproval.pending) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: AppPrimaryButton(
+                    label: 'Setujui Pemohon',
+                    icon: Icons.check_circle_outline_rounded,
+                    onPressed: () => _confirmApproval(context, applicantName),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: AppSecondaryButton(
+                    label: 'Tolak',
+                    icon: Icons.close_rounded,
+                    isDestructive: true,
+                    onPressed: () => _confirmRejection(context, applicantName),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: claim.approval == ClaimApproval.approved
+                    ? const Color(0xFFDCFCE7)
+                    : const Color(0xFFFEE2E2),
+                borderRadius: AppRadius.medium,
+              ),
+              child: Center(
+                child: Text(
+                  claim.approval == ClaimApproval.approved
+                      ? '✓ Disetujui sebagai Penerima'
+                      : '✕ Pengajuan Ditolak',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: claim.approval == ClaimApproval.approved
+                        ? AppColors.success
+                        : AppColors.error,
                   ),
                 ),
               ),
-              if (claim.approval == ClaimApproval.pending) ...[
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () => context.read<GrantClaimViewModel>().rejectClaim(claim),
-                  child: const Text('Tolak', style: TextStyle(color: Colors.redAccent)),
-                ),
-              ],
+            ),
+            if (claim.approval == ClaimApproval.approved &&
+                claim.digitalClaimPassCode != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              AppSecondaryButton(
+                label: 'Lihat Pass Pengambilan Digital',
+                icon: Icons.qr_code_2_rounded,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DigitalClaimPassScreen(
+                        claim: claim,
+                        grant: grant,
+                        recipientName: applicantName,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ],
-          ),
+          ],
         ],
       ),
     );
   }
 
-  String _timeAgo(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 60) return '${diff.inMinutes} menit yang lalu';
-    if (diff.inHours < 24) return '${diff.inHours} jam yang lalu';
-    return '${diff.inDays} hari yang lalu';
+  Future<void> _confirmApproval(
+    BuildContext context,
+    String applicantName,
+  ) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Setujui Penerima Hibah?',
+      message:
+          'Apakah Anda yakin menyetujui $applicantName sebagai penerima barang "${grant.itemName}"? Tiket Digital Claim Pass akan otomatis diterbitkan.',
+      confirmLabel: 'Ya, Setujui',
+      cancelLabel: AppStrings.cancel,
+      confirmIcon: Icons.check_circle_outline_rounded,
+    );
+
+    if (confirmed == true && context.mounted) {
+      await context.read<GrantClaimViewModel>().approveClaim(
+        claim,
+        itemName: grant.itemName,
+      );
+      if (context.mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          '$applicantName berhasil disetujui sebagai penerima.',
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmRejection(
+    BuildContext context,
+    String applicantName,
+  ) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Tolak Pengajuan Klaim?',
+      message:
+          'Apakah Anda yakin menolak pengajuan dari $applicantName? Tindakan ini tidak dapat dibatalkan.',
+      confirmLabel: 'Ya, Tolak',
+      cancelLabel: AppStrings.cancel,
+      destructive: true,
+      confirmIcon: Icons.block_rounded,
+    );
+
+    if (confirmed == true && context.mounted) {
+      await context.read<GrantClaimViewModel>().rejectClaim(claim);
+      if (context.mounted) {
+        AppSnackBar.showInfo(
+          context,
+          'Pengajuan $applicantName telah ditolak.',
+        );
+      }
+    }
   }
 }
 
-/// TODO: hubungkan ke package `audioplayers`/`just_audio` untuk play/pause
-/// sungguhan terhadap claim.voiceNoteUrl.
 class _VoiceNotePlayer extends StatelessWidget {
   const _VoiceNotePlayer();
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Icon(Icons.play_circle_fill, color: Color(0xFF0D9488), size: 20),
-        SizedBox(width: 6),
-        Text('Dengar Voice Note',
-            style: TextStyle(color: Color(0xFF0D9488), fontWeight: FontWeight.w600, fontSize: 12)),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.primaryContainer,
+        borderRadius: AppRadius.pill,
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.play_circle_fill_rounded,
+            color: AppColors.primary,
+            size: 18,
+          ),
+          SizedBox(width: 4),
+          Text(
+            'Dengarkan Penjelasan Suara',
+            style: TextStyle(
+              color: AppColors.onPrimaryContainer,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

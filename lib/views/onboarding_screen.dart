@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+
+import '../core/app_strings.dart';
+import '../shared/widgets/shared_widgets.dart';
+import '../theme/app_tokens.dart';
 import 'login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -12,11 +16,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
+  final List<_OnboardingItem> _pages = const [
+    _OnboardingItem(
+      title: 'Jual & Beli COD Aman',
+      description: 'Alihkan perlengkapan kuliah dan furnitur kos bekasmu dengan aman di Safe-Meet Point resmi kampus Unand.',
+      icon: Icons.storefront_rounded,
+    ),
+    _OnboardingItem(
+      title: 'Tukar Barang (Barter)',
+      description: 'Butuh barang baru tanpa keluar banyak uang? Ajukan penawaran barter saling menguntungkan dengan top-up tunai fleksibel.',
+      icon: Icons.swap_horiz_rounded,
+    ),
+    _OnboardingItem(
+      title: 'Hibah Sosial Mahasiswa',
+      description: 'Bantu sesama mahasiswa dengan menyalurkan barang layak pakai atau ajukan klaim sesuai prioritas kebutuhan akademik.',
+      icon: Icons.volunteer_activism_rounded,
+    ),
+  ];
+
   void _onNextPressed() {
-    if (_currentPage < 2) {
+    if (_currentPage < _pages.length - 1) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeIn,
+        duration: AppDurations.screen,
+        curve: AppDurations.inCurve,
       );
     } else {
       _navigateToLogin();
@@ -24,157 +46,144 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _navigateToLogin() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          TextButton(
-            onPressed: _navigateToLogin,
-            child: const Text(
-              'Lewati',
-              style: TextStyle(
-                color: Color(0xFF0D9488),
-                fontWeight: FontWeight.bold,
-              ),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: AppTextButton(
+              label: AppStrings.skip,
+              onPressed: _navigateToLogin,
             ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPage = index;
-                });
-              },
-              itemCount: 3,
-              itemBuilder: (context, index) {
-                return const OnboardingContent(
-                  title: 'Tukar Barang (Barter)',
-                  description:
-                      'Ingin barang baru tapi dompet tipis? Ajukan penawaran barter secara aman dengan sesama mahasiswa di satu kampus.',
-                );
-              },
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() => _currentPage = index);
+                },
+                itemCount: _pages.length,
+                itemBuilder: (context, index) {
+                  final item = _pages[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xl,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryContainer,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.2),
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            item.icon,
+                            size: 64,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xxl),
+                        Text(
+                          item.title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Text(
+                          item.description,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    3,
-                    (index) => Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: _currentPage == index ? 24 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: _currentPage == index
-                            ? const Color(0xFF0D9488)
-                            : Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(4),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      _pages.length,
+                      (index) => AnimatedContainer(
+                        duration: AppDurations.quick,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: _currentPage == index ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _currentPage == index
+                              ? AppColors.primary
+                              : const Color(0xFFCBD5E1),
+                          borderRadius: AppRadius.pill,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
+                  const SizedBox(height: AppSpacing.xl),
+                  AppPrimaryButton(
+                    label: _currentPage == _pages.length - 1
+                        ? AppStrings.start
+                        : AppStrings.next,
                     onPressed: _onNextPressed,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D9488),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                    ),
-                    child: Text(
-                      _currentPage == 2 ? 'Mulai' : 'Lanjut',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class OnboardingContent extends StatelessWidget {
+class _OnboardingItem {
   final String title;
   final String description;
+  final IconData icon;
 
-  const OnboardingContent({
-    super.key,
+  const _OnboardingItem({
     required this.title,
     required this.description,
+    required this.icon,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            height: 250,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.image_outlined,
-                size: 80,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black54,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

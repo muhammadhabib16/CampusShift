@@ -30,7 +30,8 @@ class SocialGrant {
   });
 
   final String id;
-  final String donorUserId; // hanya ID user — dipakai utk referensi (low coupling)
+  final String
+  donorUserId; // hanya ID user — dipakai utk referensi (low coupling)
   final String donorName; // label tampilan saja, di-join oleh backend, bukan dipakai utk referensi
   final String itemName;
   final String academicCategory;
@@ -41,23 +42,23 @@ class SocialGrant {
   final DateTime createdAt;
 
   factory SocialGrant.fromJson(Map<String, dynamic> json) => SocialGrant(
-        id: json['id'].toString(),
-        donorUserId: json['donor_user_id'].toString(),
-        donorName: json['donor_name'] as String? ?? '-',
-        itemName: json['item_name'] as String,
-        academicCategory: json['academic_category'] as String,
-        description: json['description'] as String,
-        photoUrl: json['photo_url'] as String,
-        quota: json['quota'] as int,
-        availability: availabilityFromString(json['availability_status'] as String),
-        createdAt: DateTime.parse(json['created_at'] as String),
-      );
+    id: json['id'].toString(),
+    donorUserId: json['donor_user_id'].toString(),
+    donorName: json['donor_name'] as String? ?? '-',
+    itemName: json['item_name'] as String,
+    academicCategory: json['academic_category'] as String,
+    description: json['description'] as String,
+    photoUrl: json['photo_url'] as String,
+    quota: json['quota'] as int,
+    availability: availabilityFromString(json['availability_status'] as String),
+    createdAt: DateTime.parse(json['created_at'] as String),
+  );
 
   Map<String, dynamic> toJson() => {
-        'item_name': itemName,
-        'academic_category': academicCategory,
-        'description': description,
-        'quota': quota,
-        'availability_status': availabilityToString(availability),
-      };
+    'item_name': itemName,
+    'academic_category': academicCategory,
+    'description': description,
+    'quota': quota,
+    'availability_status': availabilityToString(availability),
+  };
 }

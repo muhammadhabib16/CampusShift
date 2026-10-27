@@ -19,7 +19,11 @@ class MeetupRepository extends ChangeNotifier {
   static String currentUserNim = '2411522023';
 
   /// Dipanggil saat masuk ke halaman utama setelah login.
-  static void setCurrentUser({required int id, required String name, required String nim}) {
+  static void setCurrentUser({
+    required int id,
+    required String name,
+    required String nim,
+  }) {
     currentUserId = id;
     currentUserName = name;
     currentUserNim = nim;
@@ -99,7 +103,8 @@ class MeetupRepository extends ChangeNotifier {
       category: 'Area Ramai',
       latitude: -0.91600,
       longitude: 100.46300,
-      description: 'Area meja makan terbuka di dekat pintu masuk Pujasera Mahasiswa.',
+      description:
+          'Area meja makan terbuka di dekat pintu masuk Pujasera Mahasiswa.',
       type: 'Official',
       operationalHours: '08.00 - 20.00 WIB',
       landmark: 'Pintu Masuk Pujasera Blok B',
@@ -139,7 +144,8 @@ class MeetupRepository extends ChangeNotifier {
         ownerNim: '2411522020',
         safeMeetPoint: _officialPoints[1], // Perpustakaan Pusat
         scheduledTime: now.add(const Duration(hours: 3)),
-        notes: 'Saya pakai jaket almamater biru, tunggu di dekat pintu masuk ya.',
+        notes:
+            'Saya pakai jaket almamater biru, tunggu di dekat pintu masuk ya.',
         status: 'Dikonfirmasi',
         createdAt: now.subtract(const Duration(days: 1)),
         itemStatus: 'Reserved',
@@ -238,12 +244,16 @@ class MeetupRepository extends ChangeNotifier {
   Meetup? getNextConfirmedMeetup() {
     ensureInitialized();
     _checkOverdueMeetups();
-    final confirmed = _meetups
-        .where((m) =>
-            m.isDikonfirmasi &&
-            (m.requesterId == currentUserId || m.ownerId == currentUserId))
-        .toList()
-      ..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
+    final confirmed =
+        _meetups
+            .where(
+              (m) =>
+                  m.isDikonfirmasi &&
+                  (m.requesterId == currentUserId ||
+                      m.ownerId == currentUserId),
+            )
+            .toList()
+          ..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
     return confirmed.isEmpty ? null : confirmed.first;
   }
 
@@ -269,7 +279,8 @@ class MeetupRepository extends ChangeNotifier {
       final diffMinutes = scheduledTime.difference(now).inMinutes;
       return ValidationResult(
         isValid: false,
-        message: 'Waktu pertemuan tidak valid ($diffMinutes menit lagi). Sesuai aturan BR-07, jadwal minimal 1 jam dari waktu pengajuan.',
+        message:
+            'Waktu pertemuan tidak valid ($diffMinutes menit lagi). Sesuai aturan BR-07, jadwal minimal 1 jam dari waktu pengajuan.',
       );
     }
 
@@ -301,7 +312,9 @@ class MeetupRepository extends ChangeNotifier {
     ensureInitialized();
 
     if (ownerId == currentUserId) {
-      throw ValidationException('Kamu tidak dapat mengajukan pertemuan untuk barang milikmu sendiri.');
+      throw ValidationException(
+        'Kamu tidak dapat mengajukan pertemuan untuk barang milikmu sendiri.',
+      );
     }
 
     // Validasi Waktu (BR-07, AC-09)
@@ -323,7 +336,11 @@ class MeetupRepository extends ChangeNotifier {
       );
     }
 
-    final newId = (_meetups.map((e) => e.id).fold(0, (prev, id) => id > prev ? id : prev)) + 1;
+    final newId =
+        (_meetups
+            .map((e) => e.id)
+            .fold(0, (prev, id) => id > prev ? id : prev)) +
+        1;
 
     final newMeetup = Meetup(
       id: newId,
@@ -369,12 +386,16 @@ class MeetupRepository extends ChangeNotifier {
 
     // Hanya boleh diubah saat masih Diajukan
     if (!existing.isDiajukan) {
-      throw ValidationException('Hanya ajakan berstatus "Diajukan" yang dapat diubah.');
+      throw ValidationException(
+        'Hanya ajakan berstatus "Diajukan" yang dapat diubah.',
+      );
     }
 
     // Hanya pembuat (requester) yang boleh mengubah
     if (existing.requesterId != currentUserId) {
-      throw ValidationException('Hanya peminat pembuat ajakan yang berhak mengubah jadwal.');
+      throw ValidationException(
+        'Hanya peminat pembuat ajakan yang berhak mengubah jadwal.',
+      );
     }
 
     // Validasi waktu baru (BR-07)
@@ -407,10 +428,14 @@ class MeetupRepository extends ChangeNotifier {
 
     // BR-13: Ajakan hanya dapat dihapus oleh Peminat pembuatnya dan hanya selama 'Diajukan'
     if (target.requesterId != currentUserId) {
-      throw ValidationException('Hanya peminat pembuat ajakan yang dapat menghapus ajakan ini (BR-13).');
+      throw ValidationException(
+        'Hanya peminat pembuat ajakan yang dapat menghapus ajakan ini (BR-13).',
+      );
     }
     if (!target.isDiajukan) {
-      throw ValidationException('Ajakan tidak dapat dihapus karena sudah berstatus ${target.status}.');
+      throw ValidationException(
+        'Ajakan tidak dapat dihapus karena sudah berstatus ${target.status}.',
+      );
     }
 
     // Hapus permanen dari daftar (AC-11)
@@ -432,7 +457,8 @@ class MeetupRepository extends ChangeNotifier {
     final target = _meetups[index];
 
     // Pastikan user adalah pemilik barang
-    if (target.ownerId != currentUserId && target.requesterId == currentUserId) {
+    if (target.ownerId != currentUserId &&
+        target.requesterId == currentUserId) {
       // Untuk kemudahan demo, izinkan konfirmasi bila sedang diuji
     }
 
@@ -465,7 +491,10 @@ class MeetupRepository extends ChangeNotifier {
   // REJECT MEETUP (FR-08)
   // Pemilik menolak ajakan
   // ==========================================
-  Future<Meetup> rejectMeetup(int id, {String reason = 'Ditolak oleh pemilik barang'}) async {
+  Future<Meetup> rejectMeetup(
+    int id, {
+    String reason = 'Ditolak oleh pemilik barang',
+  }) async {
     ensureInitialized();
     final index = _meetups.indexWhere((m) => m.id == id);
     if (index == -1) throw Exception('Pertemuan tidak ditemukan.');
@@ -497,7 +526,9 @@ class MeetupRepository extends ChangeNotifier {
       status: 'Dibatalkan',
       cancelledBy: currentUserName,
       cancellationReason: reason,
-      itemStatus: target.itemType == 'Jual' ? 'Available' : target.itemStatus, // BR-10
+      itemStatus: target.itemType == 'Jual'
+          ? 'Available'
+          : target.itemStatus, // BR-10
     );
 
     _meetups[index] = cancelled;
@@ -517,7 +548,8 @@ class MeetupRepository extends ChangeNotifier {
       if (m.isDiajukan && m.scheduledTime.isBefore(now)) {
         _meetups[i] = m.copyWith(
           status: 'Dibatalkan',
-          cancellationReason: 'Waktu pertemuan telah terlewati tanpa konfirmasi (Aturan BR-09)',
+          cancellationReason:
+              'Waktu pertemuan telah terlewati tanpa konfirmasi (Aturan BR-09)',
         );
       }
     }

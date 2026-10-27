@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+
 import 'services/api_client.dart';
 import 'services/api_config.dart';
 import 'services/barter_service.dart';
@@ -16,6 +17,7 @@ import 'viewmodels/home_view_model.dart';
 import 'viewmodels/item_viewmodel.dart';
 import 'viewmodels/social_grant_viewmodel.dart';
 import 'views/splash_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,12 +29,17 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
-        ChangeNotifierProvider(create: (_) => HomeViewModel(HomeService())..loadLatestListings()),
+        ChangeNotifierProvider(
+          create: (_) => HomeViewModel(HomeService())..loadLatestListings(),
+        ),
         ChangeNotifierProvider(create: (_) => ItemViewModel()),
-        ChangeNotifierProvider(create: (_) => BarterViewModel(BarterService())..loadInitialData()),
+        ChangeNotifierProvider(
+          create: (_) => BarterViewModel(BarterService())..loadInitialData(),
+        ),
         // Modul 5 (Hibah): token diambil dari AuthViewModel saat request dikirim.
         ChangeNotifierProvider(
-          create: (context) => SocialGrantViewModel(SocialGrantService(_apiClient(context))),
+          create: (context) =>
+              SocialGrantViewModel(SocialGrantService(_apiClient(context))),
         ),
         ChangeNotifierProvider(
           create: (context) => GrantClaimViewModel(
@@ -62,13 +69,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       title: 'CampuShift',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D9488),
-          primary: const Color(0xFF0D9488),
-        ),
-      ),
+      theme: AppTheme.light,
       home: const SplashScreen(),
     );
   }

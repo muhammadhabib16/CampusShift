@@ -1,202 +1,273 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/barter_item.dart';
 import '../../models/item_model.dart';
+import '../../shared/widgets/shared_widgets.dart';
+import '../../theme/app_tokens.dart';
+import '../../utils/formatters.dart';
 import '../../viewmodels/auth_view_model.dart';
 import '../barter/widgets/barter_item_selection_sheet.dart';
 import '../katalog_hibah_screen.dart';
 import '../safe_meet/meetup_form_screen.dart';
 
-class ItemDetailScreen extends StatelessWidget {
+class ItemDetailScreen extends StatefulWidget {
   final ItemModel item;
   const ItemDetailScreen({super.key, required this.item});
 
   @override
+  State<ItemDetailScreen> createState() => _ItemDetailScreenState();
+}
+
+class _ItemDetailScreenState extends State<ItemDetailScreen> {
+  int _activePhotoIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
+    final item = widget.item;
+    final photos = item.photoUrls.isNotEmpty
+        ? item.photoUrls
+        : ['https://via.placeholder.com/600x450'];
+    final isGrant = item.listingType == 'Hibah';
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Detail Barang',
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
+        backgroundColor: AppColors.surface,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.bookmark_border), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.share), onPressed: () {}),
+          IconButton(
+            tooltip: 'Bagikan',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () {
+              AppSnackBar.showInfo(
+                context,
+                'Tautan barang disalin ke papan klip.',
+              );
+            },
+          ),
         ],
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar Barang Full Width
-            Image.network(
-              item.photoUrls.isNotEmpty
-                  ? item.photoUrls.first
-                  : 'https://via.placeholder.com/400',
+            // Galeri Foto Barang dengan Indikator Titik (Section 5.2)
+            SizedBox(
+              height: 280,
               width: double.infinity,
-              height: 300,
-              fit: BoxFit.cover,
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  PageView.builder(
+                    itemCount: photos.length,
+                    onPageChanged: (i) => setState(() => _activePhotoIndex = i),
+                    itemBuilder: (context, index) {
+                      return Image.network(
+                        photos[index],
+                        width: double.infinity,
+                        height: 280,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          color: AppColors.surfaceVariant,
+                          child: const Center(
+                            child: Icon(
+                              Icons.inventory_2_outlined,
+                              size: 56,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  if (photos.length > 1)
+                    Positioned(
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          borderRadius: AppRadius.pill,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(
+                            photos.length,
+                            (index) => Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              width: _activePhotoIndex == index ? 16 : 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: _activePhotoIndex == index
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.4),
+                                borderRadius: AppRadius.pill,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
 
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Badges (Status & Kondisi)
+                  // Badges: Status dan Kondisi Fisik
                   Row(
                     children: [
+                      StatusBadge(status: item.status),
+                      const SizedBox(width: AppSpacing.sm),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0D9488).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          color: AppColors.surfaceVariant,
+                          borderRadius: AppRadius.pill,
+                          border: Border.all(color: AppColors.outline),
                         ),
                         child: Text(
-                          '• ${item.status}',
+                          'Kondisi: ${item.condition}',
                           style: const TextStyle(
-                            color: Color(0xFF0D9488),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          item.condition,
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Title & Price
-                  Text(
-                    item.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        item.listingType == 'Hibah'
-                            ? 'Hibah Gratis'
-                            : currencyFormatter.format(item.price),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D9488),
                         ),
                       ),
                       if (item.isBarterOpen) ...[
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.sm),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
+                            horizontal: 8,
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(4),
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: AppRadius.pill,
                           ),
                           child: const Text(
-                            '⇌ Terbuka Barter',
+                            '⇌ Buka Barter',
                             style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFB45309),
                             ),
                           ),
                         ),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.md),
 
-                  // Zona Safe-Meet Card (Berdasarkan Figma)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      border: Border.all(color: Colors.grey[200]!),
-                      borderRadius: BorderRadius.circular(12),
+                  // Judul dan Harga
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  PriceTag(price: item.price, isGrant: isGrant, fontSize: 20),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Penjual Info
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: AvatarWithName(
+                      name: item.ownerName.isEmpty
+                          ? 'Mahasiswa Unand'
+                          : item.ownerName,
+                      subtitle: 'Kategori: ${item.category}',
+                      radius: 20,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Zona Safe-Meet Card
+                  AppCard(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.security, color: Color(0xFF0D9488)),
-                            SizedBox(width: 8),
+                            Icon(
+                              Icons.shield_outlined,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                            SizedBox(width: AppSpacing.sm),
                             Text(
-                              'Zona Safe-Meet Kampus',
+                              'Zona Safe-Meet Kampus Unand',
                               style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                           ],
                         ),
-                        const Divider(height: 24),
-                        _buildLocationRow(
-                          'Pos Satpam Utama Gedung Baru',
-                          '~150m dari posisi Anda',
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Untuk keamanan transaksi, pertemuan COD hanya dapat dijadwalkan di titik resmi.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        const Divider(height: 20, color: AppColors.outline),
+                        _buildLocationRow(
+                          'Pos Satpam Utama Gedung Rektorat',
+                          'Terpantau CCTV 24 Jam • Dekat Pintu Masuk',
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
                         _buildLocationRow(
                           'Lobi Perpustakaan Pusat (Lantai 1)',
-                          '~320m • Buka s/d 20.00 WIB',
+                          'Area Terang • Buka s/d 20.00 WIB',
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.lg),
 
-                  // Deskripsi
+                  // Deskripsi & Kondisi Fisik
                   const Text(
                     'Deskripsi & Kondisi Fisik',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
-                    item.description,
-                    style: const TextStyle(height: 1.5, color: Colors.black87),
+                    item.description.isEmpty
+                        ? 'Tidak ada deskripsi tambahan.'
+                        : item.description,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-
-                  const SizedBox(
-                    height: 100,
-                  ), // Spacing untuk bottom navigation bar
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -204,91 +275,80 @@ class ItemDetailScreen extends StatelessWidget {
         ),
       ),
 
-      // Bottom Action Buttons
+      // Bottom Action Bar dengan SafeArea
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.outline)),
+          boxShadow: AppElevation.softShadow,
         ),
-        child: Row(
-          children: [
-            if (item.isBarterOpen)
+        child: SafeArea(
+          child: Row(
+            children: [
+              if (item.isBarterOpen) ...[
+                Expanded(
+                  child: AppSecondaryButton(
+                    label: 'Tukar (Barter)',
+                    icon: Icons.swap_horiz_rounded,
+                    onPressed: () {
+                      BarterItemSelectionSheet.show(
+                        context,
+                        target: BarterItem(
+                          id: item.id,
+                          name: item.title,
+                          price: item.price,
+                          category: item.category,
+                          condition: item.condition,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+              ],
               Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: const BorderSide(color: Color(0xFF0D9488)),
-                  ),
-                  icon: const Icon(Icons.swap_horiz, color: Color(0xFF0D9488)),
-                  label: const Text(
-                    'Tukar (Barter)',
-                    style: TextStyle(color: Color(0xFF0D9488)),
-                  ),
+                flex: item.isBarterOpen ? 2 : 1,
+                child: AppPrimaryButton(
+                  label: isGrant
+                      ? 'Ajukan Klaim Hibah'
+                      : 'Ajukan Pertemuan COD',
+                  icon: isGrant
+                      ? Icons.volunteer_activism_rounded
+                      : Icons.handshake_outlined,
                   onPressed: () {
-                    BarterItemSelectionSheet.show(
+                    if (isGrant) {
+                      final nim =
+                          context.read<AuthViewModel>().currentUser?.nim ?? '';
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              KatalogHibahScreen(currentUserNim: nim),
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.push(
                       context,
-                      target: BarterItem(
-                        id: item.id,
-                        name: item.title,
-                        price: item.price,
-                        category: item.category,
-                        condition: item.condition,
+                      MaterialPageRoute(
+                        builder: (_) => MeetupFormScreen(
+                          itemId: int.tryParse(item.id) ?? 0,
+                          itemTitle: item.title,
+                          itemPrice: formatRupiah(item.price),
+                          itemType: 'Jual',
+                          ownerId: int.tryParse(item.ownerId) ?? 0,
+                          ownerName: item.ownerName.isEmpty
+                              ? 'Pemilik Barang'
+                              : item.ownerName,
+                        ),
                       ),
                     );
                   },
                 ),
               ),
-            if (item.isBarterOpen) const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D9488),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                icon: const Icon(Icons.handshake, color: Colors.white),
-                label: Text(
-                  item.listingType == 'Hibah'
-                      ? 'Ajukan Klaim'
-                      : 'Ajukan COD Temu',
-                  style: const TextStyle(color: Colors.white),
-                ),
-                onPressed: () {
-                  if (item.listingType == 'Hibah') {
-                    // Klaim hibah diajukan dari katalog hibah (Modul 5)
-                    final nim = context.read<AuthViewModel>().currentUser?.nim ?? '';
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => KatalogHibahScreen(currentUserNim: nim),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MeetupFormScreen(
-                        itemId: int.tryParse(item.id) ?? 0,
-                        itemTitle: item.title,
-                        itemPrice: currencyFormatter.format(item.price),
-                        itemType: 'Jual',
-                        ownerId: int.tryParse(item.ownerId) ?? 0,
-                        ownerName: item.ownerName.isEmpty ? 'Pemilik Barang' : item.ownerName,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -297,8 +357,12 @@ class ItemDetailScreen extends StatelessWidget {
   Widget _buildLocationRow(String title, String subtitle) {
     return Row(
       children: [
-        const Icon(Icons.location_on_outlined, color: Colors.grey, size: 20),
-        const SizedBox(width: 8),
+        const Icon(
+          Icons.location_on_outlined,
+          color: AppColors.primary,
+          size: 18,
+        ),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,18 +370,21 @@ class ItemDetailScreen extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: AppColors.textPrimary,
                 ),
               ),
               Text(
                 subtitle,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                ),
               ),
             ],
           ),
         ),
-        const Icon(Icons.send, color: Colors.grey, size: 16),
       ],
     );
   }

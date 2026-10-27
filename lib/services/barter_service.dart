@@ -32,7 +32,11 @@ class BarterService {
     condition: 'Baik',
   );
 
-  static const List<BarterItem> _myActiveItems = [_calculator, _ipadCase, _foldingDesk];
+  static const List<BarterItem> _myActiveItems = [
+    _calculator,
+    _ipadCase,
+    _foldingDesk,
+  ];
 
   static const BarterItem _targetItem = BarterItem(
     id: 'item-9',

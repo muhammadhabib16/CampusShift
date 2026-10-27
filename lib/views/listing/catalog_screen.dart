@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 
+import '../../core/app_strings.dart';
 import '../../models/item_model.dart';
+import '../../shared/widgets/shared_widgets.dart';
+import '../../theme/app_tokens.dart';
+import '../../utils/formatters.dart';
 import '../../viewmodels/item_viewmodel.dart';
 import 'add_listing_screen.dart';
 import 'item_detail_screen.dart';
@@ -15,12 +18,6 @@ class CatalogScreen extends StatefulWidget {
 }
 
 class _CatalogScreenState extends State<CatalogScreen> {
-  final currencyFormatter = NumberFormat.currency(
-    locale: 'id',
-    symbol: 'Rp ',
-    decimalDigits: 0,
-  );
-
   @override
   void initState() {
     super.initState();
@@ -45,117 +42,157 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final viewModel = Provider.of<ItemViewModel>(context);
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
-          'CampuShift',
+          'Katalog Barang',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0D9488),
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            color: AppColors.textPrimary,
           ),
         ),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundImage: NetworkImage('https://via.placeholder.com/150'),
-              radius: 16,
-            ),
+            tooltip: 'Filter Lanjutan',
+            icon: const Icon(Icons.tune_rounded, color: AppColors.primary),
+            onPressed: () => _showFilterBottomSheet(context, viewModel),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search Bar & Filter Icon
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+          // Search Bar yang Menonjol di Atas (Section 5.2)
+          Container(
+            color: AppColors.surface,
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.md,
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     decoration: InputDecoration(
-                      hintText: 'Cari buku, kalkulator, meja...',
-                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Cari buku, kalkulator, meja…',
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppColors.textSecondary,
+                        size: 20,
+                      ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
+                        borderRadius: AppRadius.pill,
+                        borderSide: const BorderSide(color: AppColors.outline),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: AppRadius.pill,
+                        borderSide: const BorderSide(color: AppColors.outline),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: AppRadius.pill,
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
                       ),
                       filled: true,
-                      fillColor: Colors.grey[200],
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      fillColor: AppColors.surfaceVariant,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                     ),
                     onSubmitted: (val) => viewModel.updateFilter(query: val),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.tune, color: Color(0xFF0D9488)),
-                  onPressed: () => _showFilterBottomSheet(context, viewModel),
                 ),
               ],
             ),
           ),
 
           // Horizontal Chips Kategori
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children:
-                  [
-                        'Semua Kategori',
-                        'Buku & Referensi',
-                        'Elektronik & Gadget',
-                        'Furnitur Kos',
-                      ]
-                      .map(
-                        (category) => Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: ChoiceChip(
-                            label: Text(category),
-                            selected: viewModel.selectedCategory == category,
-                            onSelected: (selected) {
-                              if (selected)
-                                viewModel.updateFilter(category: category);
-                            },
-                            selectedColor: const Color(0xFF0D9488)
-                                .withOpacity(0.2),
-                            labelStyle: TextStyle(
-                              color: viewModel.selectedCategory == category
-                                  ? const Color(0xFF0D9488)
-                                  : Colors.black,
-                              fontWeight: viewModel.selectedCategory == category
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
+          Container(
+            color: AppColors.surface,
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: SizedBox(
+              height: 40,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                children:
+                    [
+                      'Semua Kategori',
+                      'Buku & Referensi',
+                      'Elektronik & Gadget',
+                      'Furnitur Kos',
+                    ].map((category) {
+                      final isSelected = viewModel.selectedCategory == category;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
+                        child: ChoiceChip(
+                          label: Text(category),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              viewModel.updateFilter(category: category);
+                            }
+                          },
+                          selectedColor: AppColors.primaryContainer,
+                          backgroundColor: AppColors.surfaceVariant,
+                          labelStyle: TextStyle(
+                            color: isSelected
+                                ? AppColors.onPrimaryContainer
+                                : AppColors.textSecondary,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            fontSize: 12,
                           ),
                         ),
-                      )
-                      .toList(),
+                      );
+                    }).toList(),
+              ),
             ),
           ),
-          const SizedBox(height: 16),
+          const Divider(height: 1, color: AppColors.outline),
 
-          // Grid View Katalog
+          // Grid View Katalog (3 Kondisi: Loading, Kosong, Error)
           Expanded(
             child: viewModel.isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const LoadingState(label: 'Memuat katalog barang…')
                 : viewModel.errorMessage.isNotEmpty
-                ? Center(child: Text(viewModel.errorMessage))
+                ? ErrorState(
+                    message: viewModel.errorMessage,
+                    onRetry: () => viewModel.fetchCatalog(),
+                  )
+                : viewModel.catalogItems.isEmpty
+                ? EmptyState(
+                    title: AppStrings.emptyListingTitle,
+                    description: AppStrings.emptyListingDesc,
+                    actionLabel: 'Pasang Listing',
+                    onAction: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AddListingScreen(),
+                        ),
+                      );
+                    },
+                  )
                 : RefreshIndicator(
                     onRefresh: () => viewModel.fetchCatalog(),
+                    color: AppColors.primary,
                     child: GridView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppSpacing.lg),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            childAspectRatio: 0.65,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
+                            childAspectRatio: 0.68,
+                            crossAxisSpacing: AppSpacing.md,
+                            mainAxisSpacing: AppSpacing.md,
                           ),
                       itemCount: viewModel.catalogItems.length,
                       itemBuilder: (context, index) {
@@ -168,134 +205,164 @@ class _CatalogScreenState extends State<CatalogScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF0D9488),
-        icon: const Icon(Icons.add_a_photo, color: Colors.white),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        elevation: 3,
+        icon: const Icon(Icons.add_a_photo_outlined, size: 20),
         label: const Text(
           'Pasang Listing',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         ),
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AddListingScreen()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddListingScreen()),
+          );
         },
       ),
     );
   }
 
   Widget _buildItemCard(BuildContext context, ItemModel item) {
-    return InkWell(
+    final isGrant = item.listingType == 'Hibah';
+
+    return AppCard(
+      padding: EdgeInsets.zero,
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => ItemDetailScreen(item: item)),
         );
       },
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                Image.network(
-                  item.photoUrls.isNotEmpty
-                      ? item.photoUrls.first
-                      : 'https://via.placeholder.com/150',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                child: SizedBox(
                   height: 120,
                   width: double.infinity,
-                  fit: BoxFit.cover,
+                  child: item.photoUrls.isNotEmpty
+                      ? Image.network(
+                          item.photoUrls.first,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _buildPlaceholderImage(),
+                        )
+                      : _buildPlaceholderImage(),
                 ),
+              ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: AppRadius.pill,
+                  ),
+                  child: Text(
+                    item.condition,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              if (item.isBarterOpen)
                 Positioned(
-                  top: 8,
+                  bottom: 8,
                   left: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 6,
+                      vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D9488),
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppColors.accent,
+                      borderRadius: AppRadius.pill,
                     ),
-                    child: Text(
-                      item.condition,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.swap_horiz,
+                          color: AppColors.onAccent,
+                          size: 12,
+                        ),
+                        SizedBox(width: 3),
+                        Text(
+                          'Barter',
+                          style: TextStyle(
+                            color: AppColors.onAccent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                if (item.isBarterOpen)
-                  Positioned(
-                    bottom: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.swap_horiz, color: Colors.white, size: 12),
-                          SizedBox(width: 4),
-                          Text(
-                            'Barter',
-                            style: TextStyle(color: Colors.white, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
                   ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                PriceTag(price: item.price, isGrant: isGrant, fontSize: 13),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.category,
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.listingType == 'Hibah'
-                        ? 'Hibah Gratis'
-                        : currencyFormatter.format(item.price),
-                    style: const TextStyle(
-                      color: Color(0xFF0D9488),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Container(
+      color: AppColors.surfaceVariant,
+      child: const Center(
+        child: Icon(
+          Icons.inventory_2_outlined,
+          size: 36,
+          color: AppColors.textSecondary,
         ),
       ),
     );
   }
 }
 
-// Widget Bottom Sheet Filter Sesuai Figma
+// Widget Bottom Sheet Filter Sesuai PRD
 class FilterBottomSheet extends StatefulWidget {
   final ItemViewModel viewModel;
   const FilterBottomSheet({super.key, required this.viewModel});
@@ -318,7 +385,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,30 +395,33 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             children: [
               const Text(
                 'Filter Pencarian',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
-              TextButton.icon(
+              AppTextButton(
+                label: 'Reset',
+                icon: Icons.refresh_rounded,
                 onPressed: () {
                   widget.viewModel.resetFilter();
                   Navigator.pop(context);
                 },
-                icon: const Icon(Icons.refresh, color: Color(0xFF0D9488)),
-                label: const Text(
-                  'Reset',
-                  style: TextStyle(color: Color(0xFF0D9488)),
-                ),
               ),
             ],
           ),
-          const Divider(),
-          const SizedBox(height: 16),
+          const Divider(height: 20, color: AppColors.outline),
+          const SizedBox(height: AppSpacing.sm),
+
           const Text(
             'Tipe Jalur Transaksi',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
-            spacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs,
             children:
                 [
                   'Semua Transaksi',
@@ -363,9 +433,16 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   return ChoiceChip(
                     label: Text(type),
                     selected: isSelected,
-                    selectedColor: const Color(0xFF0D9488),
+                    selectedColor: AppColors.primaryContainer,
+                    backgroundColor: AppColors.surfaceVariant,
                     labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black,
+                      color: isSelected
+                          ? AppColors.onPrimaryContainer
+                          : AppColors.textPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      fontSize: 12,
                     ),
                     onSelected: (val) {
                       if (val) setState(() => _tempType = type);
@@ -373,47 +450,51 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   );
                 }).toList(),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Rentang Harga Mahasiswa',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          const SizedBox(height: AppSpacing.xl),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Batas Harga Maksimal',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
+              Text(
+                formatRupiah(_tempMaxPrice.toInt()),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
           Slider(
             value: _tempMaxPrice,
             min: 0,
             max: 500000,
             divisions: 50,
-            activeColor: const Color(0xFF0D9488),
-            label:
-                'Maks Rp ${NumberFormat.currency(locale: 'id', symbol: '', decimalDigits: 0).format(_tempMaxPrice)}',
+            activeColor: AppColors.primary,
+            inactiveColor: AppColors.outline,
             onChanged: (val) {
               setState(() => _tempMaxPrice = val);
             },
           ),
           const Text(
-            'Aturan BR-02: Khusus barang tipe Hibah, harga otomatis Rp 0.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            'Catatan BR-02: Khusus barang tipe Hibah, harga otomatis Rp 0.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D9488),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              onPressed: () {
-                widget.viewModel.updateFilter(
-                  type: _tempType,
-                  max: _tempMaxPrice,
-                );
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Terapkan Filter',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
+          const SizedBox(height: AppSpacing.xl),
+
+          AppPrimaryButton(
+            label: 'Terapkan Filter',
+            onPressed: () {
+              widget.viewModel.updateFilter(
+                type: _tempType,
+                max: _tempMaxPrice,
+              );
+              Navigator.pop(context);
+            },
           ),
         ],
       ),

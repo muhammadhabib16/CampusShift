@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/handover_token_model.dart';
 import 'api_config.dart';
 
@@ -17,7 +19,8 @@ class HandoverService {
     final random = Random();
     final numPart = (1000 + random.nextInt(9000)).toString();
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final codePart = '${chars[random.nextInt(chars.length)]}${random.nextInt(10)}';
+    final codePart =
+        '${chars[random.nextInt(chars.length)]}${random.nextInt(10)}';
     return 'TKN-CS-$numPart-$codePart';
   }
 
@@ -69,7 +72,8 @@ class HandoverService {
       issuedAt: now,
       expiresAt: now.add(const Duration(minutes: 5)),
       status: 'active',
-      proofNumber: 'PRF-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}-${1000 + Random().nextInt(9000)}',
+      proofNumber:
+          'PRF-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}-${1000 + Random().nextInt(9000)}',
     );
 
     _localSessions[meetupId] = newToken;
@@ -140,12 +144,14 @@ class HandoverService {
       final jwtToken = prefs.getString('jwt_token');
 
       final url = Uri.parse('$baseUrl/status/$meetupId?token_id=$tokenId');
-      final response = await http.get(
-        url,
-        headers: {
-          if (jwtToken != null) 'Authorization': 'Bearer $jwtToken',
-        },
-      ).timeout(const Duration(seconds: 4));
+      final response = await http
+          .get(
+            url,
+            headers: {
+              if (jwtToken != null) 'Authorization': 'Bearer $jwtToken',
+            },
+          )
+          .timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

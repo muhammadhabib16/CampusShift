@@ -10,7 +10,7 @@ import 'item_service.dart';
 class HomeService {
   /// [fetchItems] dapat diganti pada pengujian agar tidak memanggil server.
   HomeService({Future<List<ItemModel>> Function()? fetchItems})
-      : _fetchItems = fetchItems ?? (() => ItemService.getCatalog());
+    : _fetchItems = fetchItems ?? (() => ItemService.getCatalog());
 
   final Future<List<ItemModel>> Function() _fetchItems;
 

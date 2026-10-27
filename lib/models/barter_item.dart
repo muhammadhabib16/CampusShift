@@ -6,7 +6,8 @@ class BarterItem {
   final String id;
   final String name;
   final int price;
-  final String category; // Buku & Referensi, Furnitur Kos, Elektronik, Alat Perkuliahan
+  final String
+  category; // Buku & Referensi, Furnitur Kos, Elektronik, Alat Perkuliahan
   final String condition; // Baru, Sangat Baik, Baik, Cukup
 
   const BarterItem({
@@ -28,10 +29,10 @@ class BarterItem {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'price': price,
-        'category': category,
-        'condition': condition,
-      };
+    'id': id,
+    'name': name,
+    'price': price,
+    'category': category,
+    'condition': condition,
+  };
 }

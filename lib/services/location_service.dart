@@ -23,7 +23,9 @@ class LocationService {
   static const double defaultCampusLat = -0.9144;
   static const double defaultCampusLng = 100.4601;
 
-  static Future<LocationResult> getCurrentLocation({bool requestIfNotGranted = true}) async {
+  static Future<LocationResult> getCurrentLocation({
+    bool requestIfNotGranted = true,
+  }) async {
     try {
       final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!isServiceEnabled) {

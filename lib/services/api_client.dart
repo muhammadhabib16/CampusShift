@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 /// Klien HTTP dasar untuk Modul 5 (Hibah Sosial).
@@ -32,14 +33,20 @@ class ApiClient {
   }
 
   Future<dynamic> post(String path, {Object? body}) async {
-    final res = await http.post(Uri.parse('$baseUrl$path'),
-        headers: _headers, body: jsonEncode(body));
+    final res = await http.post(
+      Uri.parse('$baseUrl$path'),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
     return _handle(res);
   }
 
   Future<dynamic> put(String path, {Object? body}) async {
-    final res = await http.put(Uri.parse('$baseUrl$path'),
-        headers: _headers, body: body == null ? null : jsonEncode(body));
+    final res = await http.put(
+      Uri.parse('$baseUrl$path'),
+      headers: _headers,
+      body: body == null ? null : jsonEncode(body),
+    );
     return _handle(res);
   }
 

@@ -53,11 +53,11 @@ class HandoverTokenModel {
       tokenId: json['token_id'] ?? json['id'] ?? '',
       meetupId: json['meetup_id'] ?? '',
       token: json['token'] ?? '',
-      issuedAt: json['issued_at'] != null 
-          ? DateTime.parse(json['issued_at']) 
+      issuedAt: json['issued_at'] != null
+          ? DateTime.parse(json['issued_at'])
           : DateTime.now(),
-      expiresAt: json['expires_at'] != null 
-          ? DateTime.parse(json['expires_at']) 
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'])
           : DateTime.now().add(const Duration(minutes: 5)),
       usedAt: json['used_at'] != null ? DateTime.parse(json['used_at']) : null,
       status: json['status'] ?? 'active',
@@ -108,7 +108,7 @@ class MeetupDetailModel {
   final String scheduledDate;
   final String scheduledTime;
   final String status; // 'Dikonfirmasi', 'Selesai', 'Dibatalkan'
-  
+
   // Item details
   final String itemName;
   final String itemCategory;
@@ -160,7 +160,9 @@ class MeetupDetailModel {
       scheduledTime: '${DateFormat('HH:mm').format(scheduled)} WIB',
       status: meetup.status,
       itemName: meetup.itemTitle,
-      itemCategory: meetup.itemType == 'Jual' ? 'Jual (COD Tunai di Lokasi)' : meetup.itemType,
+      itemCategory: meetup.itemType == 'Jual'
+          ? 'Jual (COD Tunai di Lokasi)'
+          : meetup.itemType,
       itemGrade: meetup.itemCategory,
       itemPrice: meetup.itemPrice,
       partnerName: viewerIsRequester ? meetup.ownerName : meetup.requesterName,

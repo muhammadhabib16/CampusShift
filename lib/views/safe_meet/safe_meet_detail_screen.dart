@@ -1,43 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../../models/safe_meet_point.dart';
 import '../../services/maps_launcher_service.dart';
+import '../../shared/widgets/shared_widgets.dart';
+import '../../theme/app_tokens.dart';
+import '../../utils/formatters.dart';
 import 'meetup_form_screen.dart';
 
 class SafeMeetDetailScreen extends StatelessWidget {
   final SafeMeetPoint point;
 
-  const SafeMeetDetailScreen({
-    super.key,
-    required this.point,
-  });
+  const SafeMeetDetailScreen({super.key, required this.point});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFB),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
         title: const Text(
           'Detail Titik Temu Resmi',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           // Header Card dengan Thumbnail Peta
           Container(
             height: 180,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: AppRadius.large,
+              border: Border.all(color: AppColors.outline),
+              boxShadow: AppElevation.softShadow,
             ),
             clipBehavior: Clip.antiAlias,
             child: FlutterMap(
@@ -45,7 +43,7 @@ class SafeMeetDetailScreen extends StatelessWidget {
                 initialCenter: LatLng(point.latitude, point.longitude),
                 initialZoom: 16.5,
                 interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.none, // Static preview map
+                  flags: InteractiveFlag.none,
                 ),
               ),
               children: [
@@ -61,14 +59,18 @@ class SafeMeetDetailScreen extends StatelessWidget {
                       height: 44,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0D9488),
+                          color: AppColors.primary,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                           boxShadow: const [
                             BoxShadow(color: Colors.black26, blurRadius: 4),
                           ],
                         ),
-                        child: const Icon(Icons.shield, color: Colors.white, size: 24),
+                        child: const Icon(
+                          Icons.shield,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                     ),
                   ],
@@ -76,54 +78,59 @@ class SafeMeetDetailScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
 
           // Judul dan Kategori
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.teal.shade50,
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.primaryContainer,
+                        borderRadius: AppRadius.pill,
                       ),
                       child: Text(
                         point.category,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal.shade800,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onPrimaryContainer,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                      child: Row(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: AppRadius.pill,
+                      ),
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.verified, size: 12, color: Colors.green.shade700),
-                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.verified,
+                            size: 12,
+                            color: Color(0xFF15803D),
+                          ),
+                          SizedBox(width: 4),
                           Text(
                             'Resmi Kampus (Official)',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green.shade800,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF15803D),
                             ),
                           ),
                         ],
@@ -131,101 +138,120 @@ class SafeMeetDetailScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Text(
                   point.name,
                   style: const TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   point.description,
-                  style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
                 ),
-                const Divider(height: 24),
+                const Divider(height: 24, color: AppColors.outline),
+
                 // Indikator Jarak Haversine
                 Row(
                   children: [
-                    const Icon(Icons.near_me_rounded, color: Color(0xFF0D9488), size: 20),
-                    const SizedBox(width: 8),
-                    Text(
+                    const Icon(
+                      Icons.near_me_rounded,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    const Text(
                       'Jarak dari Posisimu: ',
-                      style: const TextStyle(fontSize: 13, color: Colors.black54),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     Text(
-                      point.formattedDistance,
+                      formatJarak(point.distanceInMeters),
                       style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0D9488),
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
                       ),
                     ),
-                    if (point.distanceInMeters != null)
-                      Text(
-                        ' (Haversine)',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                      ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.lg),
 
           // Detail Operasional & Patokan
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Panduan & Keamanan',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  'Panduan & Fasilitas Keamanan',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 _buildInfoRow(
                   Icons.access_time_filled_rounded,
                   'Jam Operasional Disarankan',
                   point.operationalHours,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.sm),
                 _buildInfoRow(
                   Icons.pin_drop_rounded,
                   'Patokan Lokasi',
-                  point.landmark.isNotEmpty ? point.landmark : 'Dekat Pos Satpam / Lobby Utama',
+                  point.landmark.isNotEmpty
+                      ? point.landmark
+                      : 'Dekat Pos Satpam / Lobby Utama',
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.sm),
                 _buildInfoRow(
                   Icons.my_location,
                   'Koordinat GPS Presisi',
                   '${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}',
                 ),
-                const Divider(height: 24),
+                const Divider(height: 24, color: AppColors.outline),
                 const Text(
-                  'Fasilitas Keamanan Titik Resmi (BR-07):',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  'Fitur Keamanan Terverifikasi (BR-07):',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 ...point.safetyFeatures.map((feat) {
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 3),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.check_circle_rounded, color: Color(0xFF0D9488), size: 18),
-                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: AppColors.success,
+                          size: 16,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
                             feat,
-                            style: const TextStyle(fontSize: 13, color: Colors.black87),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
                         ),
                       ],
@@ -235,77 +261,57 @@ class SafeMeetDetailScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
 
           // Tombol Buka Rute Google Maps (FR-09 & AC-12)
-          SizedBox(
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final success = await MapsLauncherService.openNavigation(
-                  latitude: point.latitude,
-                  longitude: point.longitude,
-                  destinationTitle: point.name,
-                );
+          AppSecondaryButton(
+            label: 'Buka Rute Navigasi Google Maps',
+            icon: Icons.directions_rounded,
+            onPressed: () async {
+              final success = await MapsLauncherService.openNavigation(
+                latitude: point.latitude,
+                longitude: point.longitude,
+                destinationTitle: point.name,
+              );
 
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(success
-                          ? 'Membuka rute navigasi Google Maps menuju ${point.name} (AC-12)'
-                          : 'Gagal membuka aplikasi peta eksternal.'),
-                      backgroundColor: const Color(0xFF0D9488),
-                    ),
+              if (context.mounted) {
+                if (success) {
+                  AppSnackBar.showSuccess(
+                    context,
+                    'Membuka navigasi Google Maps menuju ${point.name}',
+                  );
+                } else {
+                  AppSnackBar.showError(
+                    context,
+                    'Gagal membuka aplikasi navigasi eksternal.',
                   );
                 }
-              },
-              icon: const Icon(Icons.directions_rounded, color: Color(0xFF0D9488)),
-              label: const Text(
-                'Buka Rute Navigasi Google Maps',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF0D9488), width: 1.5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
+              }
+            },
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
 
-          // Tombol Ajukan Pertemuan di Sini (FR-07.1)
-          SizedBox(
-            height: 50,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => MeetupFormScreen(
-                      initialSafeMeetPoint: point,
-                      itemId: 2,
-                      itemTitle: 'Laptop Stand Aluminium Adjustable',
-                      itemPrice: 'Rp 120.000',
-                      itemType: 'Jual',
-                      ownerId: 3,
-                      ownerName: 'Fadel Muhammad',
-                    ),
+          // Tombol Ajukan Pertemuan di Sini
+          AppPrimaryButton(
+            label: 'Ajukan Pertemuan di Titik Ini',
+            icon: Icons.calendar_month_rounded,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MeetupFormScreen(
+                    initialSafeMeetPoint: point,
+                    itemId: 2,
+                    itemTitle: 'Laptop Stand Aluminium Adjustable',
+                    itemPrice: 'Rp120.000',
+                    itemType: 'Jual',
+                    ownerId: 3,
+                    ownerName: 'Fadel Muhammad',
                   ),
-                );
-              },
-              icon: const Icon(Icons.calendar_month_rounded, color: Colors.white),
-              label: const Text(
-                'Ajukan Pertemuan di Titik Ini',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
                 ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D9488),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
+              );
+            },
           ),
+          const SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );
@@ -315,20 +321,27 @@ class SafeMeetDetailScreen extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF0D9488)),
-        const SizedBox(width: 10),
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 11, color: Colors.black54),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ),

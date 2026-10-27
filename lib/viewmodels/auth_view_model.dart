@@ -49,7 +49,8 @@ class AuthViewModel extends ChangeNotifier {
     _setLoading(true);
     final result = await AuthService.login(email: email, password: password);
     final success = result['success'] == true;
-    _message = result['message'] ?? (success ? 'Login berhasil' : 'Login gagal');
+    _message =
+        result['message'] ?? (success ? 'Login berhasil' : 'Login gagal');
     if (success) {
       _currentUser = await AuthService.getCurrentUser();
       _token = await AuthService.getToken();
@@ -68,7 +69,10 @@ class AuthViewModel extends ChangeNotifier {
     final trimmedNim = nim.trim();
     final trimmedEmail = email.trim().toLowerCase();
 
-    if (trimmedName.isEmpty || trimmedNim.isEmpty || trimmedEmail.isEmpty || password.isEmpty) {
+    if (trimmedName.isEmpty ||
+        trimmedNim.isEmpty ||
+        trimmedEmail.isEmpty ||
+        password.isEmpty) {
       _message = 'Semua kolom wajib diisi';
       notifyListeners();
       return false;
@@ -80,7 +84,8 @@ class AuthViewModel extends ChangeNotifier {
       return false;
     }
 
-    if (!trimmedEmail.endsWith('@student.unand.ac.id') && !trimmedEmail.endsWith('@unand.ac.id')) {
+    if (!trimmedEmail.endsWith('@student.unand.ac.id') &&
+        !trimmedEmail.endsWith('@unand.ac.id')) {
       _message = 'Pendaftaran saat ini khusus mahasiswa Universitas Andalas (@student.unand.ac.id)';
       notifyListeners();
       return false;
@@ -94,7 +99,8 @@ class AuthViewModel extends ChangeNotifier {
       password: password,
     );
     final success = result['success'] == true;
-    _message = result['message'] ??
+    _message =
+        result['message'] ??
         (success ? 'Registrasi berhasil, silakan login' : 'Registrasi gagal');
     _setLoading(false);
     return success;
