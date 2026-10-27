@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
-import 'services/api_client.dart';
-import 'services/api_config.dart';
 import 'services/barter_service.dart';
-import 'services/grant_claim_service.dart';
-import 'services/grant_notification_service.dart';
 import 'services/home_service.dart';
-import 'services/social_grant_service.dart';
+import 'theme/app_theme.dart';
 import 'viewmodels/auth_view_model.dart';
 import 'viewmodels/barter_view_model.dart';
 import 'viewmodels/grant_claim_viewmodel.dart';
 import 'viewmodels/home_view_model.dart';
 import 'viewmodels/item_viewmodel.dart';
 import 'viewmodels/social_grant_viewmodel.dart';
+import 'views/ajukan_klaim_screen.dart';
+import 'views/daftar_detail_klaim_screen.dart';
+import 'views/katalog_hibah_screen.dart';
 import 'views/splash_screen.dart';
-import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,28 +33,12 @@ void main() async {
         ChangeNotifierProvider(
           create: (_) => BarterViewModel(BarterService())..loadInitialData(),
         ),
-        // Modul 5 (Hibah): token diambil dari AuthViewModel saat request dikirim.
-        ChangeNotifierProvider(
-          create: (context) =>
-              SocialGrantViewModel(SocialGrantService(_apiClient(context))),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => GrantClaimViewModel(
-            GrantClaimService(_apiClient(context)),
-            GrantNotificationService(FlutterLocalNotificationsPlugin()),
-          ),
-        ),
+        // Modul 5 (Hibah & Klaim)
+        ChangeNotifierProvider(create: (_) => SocialGrantViewModel()),
+        ChangeNotifierProvider(create: (_) => GrantClaimViewModel()),
       ],
       child: const MainApp(),
     ),
-  );
-}
-
-/// Klien HTTP Modul 5. Alamat backend diatur di ApiConfig.
-ApiClient _apiClient(BuildContext context) {
-  return ApiClient(
-    baseUrl: ApiConfig.baseUrl,
-    getToken: () => context.read<AuthViewModel>().token,
   );
 }
 
@@ -71,6 +52,11 @@ class MainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const SplashScreen(),
+      routes: {
+        '/katalog-hibah': (context) => const KatalogHibahScreen(),
+        '/ajukan-klaim': (context) => const AjukanKlaimScreen(),
+        '/kelola-klaim': (context) => const DaftarDetailKlaimScreen(),
+      },
     );
   }
 }

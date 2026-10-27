@@ -4,103 +4,204 @@ import '../models/grant_claim.dart';
 import '../services/grant_claim_service.dart';
 import '../services/grant_notification_service.dart';
 
-/// State & aturan bisnis untuk layar pengajuan klaim (pemohon) dan
-/// antrean/persetujuan klaim (donatur). Sengaja digabung dalam satu
-/// ViewModel karena keduanya beroperasi di atas entity GrantClaim yang sama
-/// — kalau nanti terasa gemuk, gampang dipecah jadi dua ViewModel terpisah.
 class GrantClaimViewModel extends ChangeNotifier {
-  GrantClaimViewModel(this._service, this._notifications);
-  final GrantClaimService _service;
-  final GrantNotificationService _notifications;
+  final GrantClaimService _service = GrantClaimService();
+  final GrantNotificationService _notificationService = GrantNotificationService();
 
-  List<GrantClaim> claimQueue = [];
-  bool isLoading = false;
-  String? errorMessage;
+  List<GrantClaim> _myClaims = [];
+  List<GrantClaim> _donorQueue = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+  final List<String> _pendingNotifications = [];
+  String _currentApplicantId = 'user-mahasiswa-aktif';
+  String _currentApplicantName = 'Racha Ardiwinata';
 
-  /// FR-22: validasi panjang justifikasi minimal 100 karakter — sama
-  /// seperti validasi foto di SocialGrantViewModel, ditaruh di ViewModel
-  /// supaya Service tetap murni I/O.
-  Future<bool> submitClaim({
-    required String grantId,
-    required ClaimUrgency urgency,
-    required String justificationText,
-    String? voiceNoteFilePath,
-  }) async {
-    if (justificationText.trim().length < 100) {
-      errorMessage = 'Justifikasi akademik minimal 100 karakter.';
-      notifyListeners();
-      return false;
-    }
-    isLoading = true;
-    errorMessage = null;
+  List<GrantClaim> get myClaims => _myClaims;
+  List<GrantClaim> get donorQueue => _donorQueue;
+  List<GrantClaim> get claims => _myClaims;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  List<String> get pendingNotifications => _pendingNotifications;
+
+  String get currentApplicantId => _currentApplicantId;
+  String get currentApplicantName => _currentApplicantName;
+
+  int get activeClaimCount =>
+      _myClaims.where((c) => c.applicantUserId == _currentApplicantId && c.isActiveClaim).length;
+
+  bool get hasReachedActiveLimit => activeClaimCount >= 3;
+
+  void setCurrentUser({required String userId, required String userName}) {
+    _currentApplicantId = userId;
+    _currentApplicantName = userName;
     notifyListeners();
+  }
+
+  List<String> consumeNotifications() {
+    final alerts = List<String>.from(_pendingNotifications);
+    _pendingNotifications.clear();
+    return alerts;
+  }
+
+  Future<void> syncClaims({String? itemId}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
-      await _service.submitClaim(
-        grantId: grantId,
-        urgency: urgency,
-        justificationText: justificationText,
-        voiceNoteFilePath: voiceNoteFilePath,
+      final fetchedMyClaims = await _service.fetchMyClaims('');
+      final fetchedQueue = itemId != null
+          ? await _service.fetchQueueForItem(itemId)
+          : await _service.fetchAllDonorQueue();
+
+      _myClaims = fetchedMyClaims;
+      _donorQueue = fetchedQueue;
+
+      final alerts = _notificationService.checkSyncNotifications(
+        myClaims: _myClaims.where((c) => c.applicantUserId == _currentApplicantId).toList(),
+        incomingDonorClaims: _donorQueue,
       );
-      return true;
-    } catch (e) {
-      errorMessage = 'Gagal mengirim pengajuan klaim.';
-      return false;
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// FR-23: dipanggil dari sisi donatur saat membuka antrean klaim
-  /// untuk satu grant tertentu.
-  Future<void> loadClaimQueue(String grantId) async {
-    isLoading = true;
-    notifyListeners();
-    try {
-      claimQueue = await _service.fetchClaimQueue(grantId);
-    } catch (e) {
-      errorMessage = 'Gagal memuat antrean klaim.';
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// FR-24 + FR-25: approve lalu picu notifikasi lokal untuk pemohon.
-  /// Lihat catatan keterbatasan tanpa-FCM di GrantNotificationService.
-  Future<void> approveClaim(
-    GrantClaim claim, {
-    required String itemName,
-  }) async {
-    try {
-      final updated = await _service.approveClaim(claim.id);
-      claimQueue = claimQueue
-          .map((c) => c.id == updated.id ? updated : c)
-          .toList();
-      notifyListeners();
-      if (updated.approval == ClaimApproval.approved &&
-          updated.digitalClaimPassCode != null) {
-        await _notifications.showClaimApproved(
-          itemName: itemName,
-          claimPassCode: updated.digitalClaimPassCode!,
-        );
+      if (alerts.isNotEmpty) {
+        _pendingNotifications.addAll(alerts);
       }
     } catch (e) {
-      errorMessage = 'Gagal menyetujui klaim.';
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> rejectClaim(GrantClaim claim) async {
+  Future<GrantClaim?> submitClaim({
+    required String itemId,
+    required String itemTitle,
+    String donorUserId = 'user-raka-001',
+    String donorName = 'Donatur Unand',
+    required String urgency,
+    required String justification,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
-      final updated = await _service.rejectClaim(claim.id);
-      claimQueue = claimQueue
-          .map((c) => c.id == updated.id ? updated : c)
-          .toList();
-      notifyListeners();
+      final created = await _service.createClaim(
+        itemId: itemId,
+        itemTitle: itemTitle,
+        donorUserId: donorUserId,
+        donorName: donorName,
+        applicantUserId: _currentApplicantId,
+        applicantName: _currentApplicantName,
+        urgency: urgency,
+        justification: justification,
+      );
+      await syncClaims();
+      return created;
     } catch (e) {
-      errorMessage = 'Gagal menolak klaim.';
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
       notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> updateClaim({
+    required String claimId,
+    required String urgency,
+    required String justification,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _service.updatePendingClaim(
+        claimId: claimId,
+        urgency: urgency,
+        justification: justification,
+      );
+      await syncClaims();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deletePendingClaim(String claimId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _service.deletePendingClaim(claimId);
+      await syncClaims();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> cancelApprovedClaim(String claimId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _service.cancelApprovedClaim(claimId);
+      _notificationService.cancelPickupReminder(claimId);
+      await syncClaims();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> approveClaimByDonor(String claimId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final approved = await _service.approveClaim(claimId);
+      _pendingNotifications.add(
+        'N-06: Klaim ${approved.itemTitle} milik ${approved.applicantName} disetujui. Klaim lain otomatis Rejected & barang menjadi Reserved.',
+      );
+      await syncClaims();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> rejectClaimByDonor(String claimId, {String? reason}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final rejected = await _service.rejectClaim(claimId, reason: reason);
+      _pendingNotifications.add(
+        'N-06: Klaim ${rejected.applicantName} untuk ${rejected.itemTitle} telah ditolak.',
+      );
+      await syncClaims();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 }

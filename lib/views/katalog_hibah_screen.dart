@@ -1,375 +1,330 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
 import '../models/social_grant.dart';
-import '../shared/widgets/shared_widgets.dart';
-import '../theme/app_tokens.dart';
+import '../viewmodels/grant_claim_viewmodel.dart';
 import '../viewmodels/social_grant_viewmodel.dart';
 import 'ajukan_klaim_screen.dart';
+import 'daftar_detail_klaim_screen.dart';
 
-/// Layar Katalog Hibah — FR-21 (telusuri katalog hibah aktif).
-/// Menggunakan design system seragam: Material 3, AppCard, PriceTag (Hibah),
-/// serta penanganan 3 kondisi layar (Loading, Empty, Error) sesuai PRD 2.10.
 class KatalogHibahScreen extends StatefulWidget {
-  const KatalogHibahScreen({super.key, required this.currentUserNim});
-
-  /// Dioper dari luar modul (hasil AuthViewModel milik Modul Pendukung)
-  final String currentUserNim;
+  const KatalogHibahScreen({super.key});
 
   @override
   State<KatalogHibahScreen> createState() => _KatalogHibahScreenState();
 }
 
 class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
-  static const _categories = [
-    'Semua',
-    'Buku',
-    'Elektronik',
-    'Furnitur',
-    'Alat Kuliah',
-  ];
+  final SocialGrantViewModel _grantVm = SocialGrantViewModel();
+  final GrantClaimViewModel _claimVm = GrantClaimViewModel();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<SocialGrantViewModel>().loadGrants();
-    });
+    _grantVm.addListener(_onChanged);
+    _claimVm.addListener(_onChanged);
+    _grantVm.loadGrants();
+    _claimVm.syncClaims();
+  }
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _grantVm.removeListener(_onChanged);
+    _claimVm.removeListener(_onChanged);
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<SocialGrantViewModel>();
-
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Katalog Hibah Sosial'),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
+        title: const Text('Katalog Hibah Unand'),
+        backgroundColor: const Color(0xFF0D9488),
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            tooltip: 'Klaim Saya & Antrean Donatur',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DaftarDetailKlaimScreen(viewModel: _claimVm),
+                ),
+              ).then((_) => _grantVm.loadGrants());
+            },
+            icon: Badge(
+              isLabelVisible: _claimVm.activeClaimCount > 0,
+              backgroundColor: Colors.amber.shade700,
+              label: Text('${_claimVm.activeClaimCount}'),
+              child: const Icon(Icons.assignment_turned_in_rounded),
+            ),
+          ),
+        ],
       ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () => vm.loadGrants(category: vm.selectedCategory),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // Hero Banner SDG 12
-            const SliverToBoxAdapter(child: _HeroBanner()),
-
-            // Category Chips
-            SliverToBoxAdapter(child: _CategoryChips(categories: _categories)),
-
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
-
-            // 3 Kondisi Layar (PRD 2.10)
-            if (vm.isLoading)
-              const SliverFillRemaining(
-                child: LoadingState(label: 'Memuat katalog hibah aktif…'),
-              )
-            else if (vm.errorMessage != null)
-              SliverFillRemaining(
-                child: ErrorState(
-                  title: 'Gagal Memuat Hibah',
-                  message: vm.errorMessage!,
-                  onRetry: () => vm.loadGrants(category: vm.selectedCategory),
-                ),
-              )
-            else if (vm.grants.isEmpty)
-              const SliverFillRemaining(
-                child: EmptyState(
-                  icon: Icons.volunteer_activism_rounded,
-                  title: 'Belum Ada Barang Hibah',
-                  description: 'Saat ini belum ada donasi aktif pada kategori yang dipilih. Silakan periksa kategori lain.',
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.sm,
-                ),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: AppSpacing.md,
-                    crossAxisSpacing: AppSpacing.md,
-                    childAspectRatio: 0.68,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, i) => _GrantCard(
-                      grant: vm.grants[i],
-                      currentUserNim: widget.currentUserNim,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              color: Colors.white,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (val) => _grantVm.setSearchQuery(val),
+                    decoration: InputDecoration(
+                      hintText: 'Cari buku, meja kos, jas lab hibah...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                _grantVm.setSearchQuery('');
+                              },
+                              icon: const Icon(Icons.clear_rounded),
+                            )
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    childCount: vm.grants.length,
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 36,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: SocialGrantViewModel.categories.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final cat = SocialGrantViewModel.categories[index];
+                        final selected = _grantVm.selectedCategory == cat;
+                        return ChoiceChip(
+                          label: Text(cat),
+                          selected: selected,
+                          selectedColor: const Color(0xFF0D9488).withValues(alpha: 0.18),
+                          onSelected: (_) => _grantVm.setCategory(cat),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDFA),
+                border: Border(
+                  bottom: BorderSide(
+                    color: const Color(0xFF0D9488).withValues(alpha: 0.15),
                   ),
                 ),
               ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF0D9488)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Kuota Klaim: ${_claimVm.activeClaimCount}/3 aktif (BR-28)',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF115E59),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DaftarDetailKlaimScreen(viewModel: _claimVm),
+                        ),
+                      ).then((_) => _grantVm.loadGrants());
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Riwayat Klaim',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0D9488),
+                            ),
+                          ),
+                          SizedBox(width: 2),
+                          Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFF0D9488)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _grantVm.isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _grantVm.grants.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'Barang hibah tidak ditemukan (AC-03).',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: () => _grantVm.loadGrants(),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _grantVm.grants.length,
+                            itemBuilder: (context, index) {
+                              final item = _grantVm.grants[index];
+                              return _buildGrantCard(item);
+                            },
+                          ),
+                        ),
+            ),
           ],
         ),
       ),
     );
   }
-}
 
-class _HeroBanner extends StatelessWidget {
-  const _HeroBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(AppSpacing.lg),
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: AppRadius.large,
-        boxShadow: AppElevation.softShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  borderRadius: AppRadius.pill,
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.eco_rounded, color: AppColors.primary, size: 14),
-                    SizedBox(width: 4),
-                    Text(
-                      'SDG 12: Konsumsi Berkelanjutan',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onPrimaryContainer,
-                      ),
-                    ),
-                  ],
+  Widget _buildGrantCard(SocialGrant item) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 1.5,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (item.imageUrl.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  item.imageUrl,
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
                 ),
               ),
+              const SizedBox(height: 10),
             ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const Text(
-            'Berbagi untuk Sesama Mahasiswa',
-            style: TextStyle(
-              color: AppColors.onPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          const Text(
-            'Dukung sirkularitas kampus Unand dengan mengalihkan perlengkapan kuliah secara gratis bagi yang membutuhkan.',
-            style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryChips extends StatelessWidget {
-  const _CategoryChips({required this.categories});
-  final List<String> categories;
-
-  @override
-  Widget build(BuildContext context) {
-    final vm = context.watch<SocialGrantViewModel>();
-
-    return SizedBox(
-      height: 40,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        itemCount: categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-        itemBuilder: (context, i) {
-          final label = categories[i];
-          final value = label == 'Semua' ? null : label;
-          final selected = vm.selectedCategory == value;
-
-          return ChoiceChip(
-            label: Text(label),
-            selected: selected,
-            onSelected: (_) =>
-                context.read<SocialGrantViewModel>().setCategory(value),
-            selectedColor: AppColors.primary,
-            backgroundColor: AppColors.surface,
-            labelStyle: TextStyle(
-              color: selected ? AppColors.onPrimary : AppColors.textPrimary,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 12,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: AppRadius.pill,
-              side: BorderSide(
-                color: selected ? AppColors.primary : AppColors.outline,
-              ),
-            ),
-            showCheckmark: false,
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _GrantCard extends StatelessWidget {
-  const _GrantCard({required this.grant, required this.currentUserNim});
-  final SocialGrant grant;
-  final String currentUserNim;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: EdgeInsets.zero,
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              AjukanKlaimScreen(grant: grant, currentUserNim: currentUserNim),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Gambar Foto Barang
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
+            Row(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(AppRadius.largeValue),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  child: grant.photoUrl.isEmpty
-                      ? Container(
-                          color: AppColors.surfaceVariant,
-                          child: const Icon(
-                            Icons.volunteer_activism_outlined,
-                            color: AppColors.primary,
-                            size: 36,
-                          ),
-                        )
-                      : Image.network(
-                          grant.photoUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
-                            color: AppColors.surfaceVariant,
-                            child: const Icon(
-                              Icons.image_not_supported_outlined,
-                              color: AppColors.textSecondary,
+                  child: const Text(
+                    'HIBAH • GRATIS (Rp0)',
+                    style: TextStyle(
+                      color: Color(0xFF0D9488),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Kondisi: ${item.condition}',
+                    style: TextStyle(fontSize: 11, color: Colors.blueGrey.shade800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              item.title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.description,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.person_outline_rounded, size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Donatur: ${item.ownerName} (${item.ownerReputation.toStringAsFixed(1)} ★)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D9488),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: _claimVm.hasReachedActiveLimit
+                      ? () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Batas klaim aktif tercapai (maksimal 3 klaim Pending/Approved sekaligus - BR-28).',
+                              ),
+                              backgroundColor: Colors.redAccent,
                             ),
-                          ),
-                        ),
-                ),
-                // Badge Kategori Akademik
-                Positioned(
-                  top: AppSpacing.sm,
-                  left: AppSpacing.sm,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.textPrimary.withValues(alpha: 0.75),
-                      borderRadius: AppRadius.pill,
-                    ),
-                    child: Text(
-                      grant.academicCategory,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                          );
+                        }
+                      : () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AjukanKlaimScreen(
+                                grant: item,
+                                viewModel: _claimVm,
+                              ),
+                            ),
+                          );
+                          _grantVm.loadGrants();
+                        },
+                  icon: const Icon(Icons.volunteer_activism_rounded, size: 16),
+                  label: const Text('Ajukan Klaim', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
-          ),
-
-          // Detail Informasi Hibah
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  grant.itemName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.person_outline_rounded,
-                      size: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        grant.donorName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // PriceTag dengan badge hibah gratis
-                    const PriceTag(price: 0, isGrant: true),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs + 2,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryContainer,
-                        borderRadius: AppRadius.small,
-                      ),
-                      child: Text(
-                        'Kuota: ${grant.quota}',
-                        style: const TextStyle(
-                          color: AppColors.onPrimaryContainer,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

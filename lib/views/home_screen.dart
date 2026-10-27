@@ -514,11 +514,9 @@ class HomeScreen extends StatelessWidget {
                 label: 'Hibah',
                 color: const Color(0xFF6D28D9),
                 onTap: () {
-                  final nim =
-                      context.read<AuthViewModel>().currentUser?.nim ?? '';
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => KatalogHibahScreen(currentUserNim: nim),
+                      builder: (_) => const KatalogHibahScreen(),
                     ),
                   );
                 },

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../models/barter_item.dart';
 import '../../models/item_model.dart';
 import '../../shared/widgets/shared_widgets.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/formatters.dart';
-import '../../viewmodels/auth_view_model.dart';
 import '../barter/widgets/barter_item_selection_sheet.dart';
 import '../katalog_hibah_screen.dart';
 import '../safe_meet/meetup_form_screen.dart';
@@ -318,13 +316,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                       : Icons.handshake_outlined,
                   onPressed: () {
                     if (isGrant) {
-                      final nim =
-                          context.read<AuthViewModel>().currentUser?.nim ?? '';
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              KatalogHibahScreen(currentUserNim: nim),
+                          builder: (_) => const KatalogHibahScreen(),
                         ),
                       );
                       return;
@@ -347,12 +342,12 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   },
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildLocationRow(String title, String subtitle) {
     return Row(

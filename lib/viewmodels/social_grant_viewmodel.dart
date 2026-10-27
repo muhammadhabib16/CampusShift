@@ -3,77 +3,55 @@ import 'package:flutter/foundation.dart';
 import '../models/social_grant.dart';
 import '../services/social_grant_service.dart';
 
-/// State & aturan bisnis untuk layar katalog/formulir hibah.
-/// Views HANYA boleh memanggil method di sini, tidak boleh panggil
-/// SocialGrantService langsung (TEAM_GUIDELINES.md #2: pola MVVM).
 class SocialGrantViewModel extends ChangeNotifier {
-  SocialGrantViewModel(this._service);
-  final SocialGrantService _service;
+  final SocialGrantService _service = SocialGrantService();
 
-  List<SocialGrant> grants = [];
-  bool isLoading = false;
-  String? errorMessage;
-  String? selectedCategory; // null = chip "Semua"
+  List<SocialGrant> _grants = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+  String _searchQuery = '';
+  String _selectedCategory = 'Semua';
 
-  /// Dipanggil dari chip kategori di layar katalog-hibah.
-  void setCategory(String? category) {
-    selectedCategory = category;
-    loadGrants(category: category);
-  }
+  List<SocialGrant> get grants => _grants;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  String get searchQuery => _searchQuery;
+  String get selectedCategory => _selectedCategory;
 
-  Future<void> loadGrants({String? category}) async {
-    isLoading = true;
-    errorMessage = null;
+  static const List<String> categories = [
+    'Semua',
+    'Buku & Referensi',
+    'Furnitur Kos',
+    'Elektronik',
+    'Alat Perkuliahan',
+  ];
+
+  Future<void> loadGrants({String? currentUserId}) async {
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
-    try {
-      grants = await _service.fetchActiveGrants(category: category);
-    } catch (e) {
-      errorMessage = 'Gagal memuat katalog hibah. Coba lagi.';
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
 
-  /// FR-21: aturan "wajib minimal 1 foto" divalidasi DI SINI, bukan di
-  /// Service — supaya Service tetap sederhana (murni I/O) dan aturan
-  /// bisnisnya mudah dites/diperiksa terpisah dari jaringan.
-  Future<bool> submitNewGrant({
-    required String itemName,
-    required String academicCategory,
-    required String description,
-    required int quota,
-    required String? photoFilePath,
-  }) async {
-    if (photoFilePath == null) {
-      errorMessage = 'Foto kondisi barang wajib diambil dari kamera.';
-      notifyListeners();
-      return false;
-    }
-    isLoading = true;
-    notifyListeners();
     try {
-      final grant = await _service.createGrant(
-        itemName: itemName,
-        academicCategory: academicCategory,
-        description: description,
-        quota: quota,
-        photoFilePath: photoFilePath,
+      _grants = await _service.fetchAvailableGrants(
+        query: _searchQuery,
+        category: _selectedCategory,
+        excludeOwnerId: currentUserId,
       );
-      grants = [grant, ...grants];
-      return true;
     } catch (e) {
-      errorMessage = 'Gagal menyimpan hibah. Periksa koneksi Anda.';
-      return false;
+      _errorMessage = 'Tidak dapat terhubung ke server. Silakan coba lagi.';
     } finally {
-      isLoading = false;
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> archiveGrant(String id) async {
-    await _service.archiveGrant(id);
-    grants = grants.where((g) => g.id != id).toList();
-    notifyListeners();
+  void setSearchQuery(String query, {String? currentUserId}) {
+    _searchQuery = query;
+    loadGrants(currentUserId: currentUserId);
+  }
+
+  void setCategory(String category, {String? currentUserId}) {
+    _selectedCategory = category;
+    loadGrants(currentUserId: currentUserId);
   }
 }
