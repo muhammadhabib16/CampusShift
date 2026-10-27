@@ -22,14 +22,17 @@ class BarterViewModel extends ChangeNotifier {
   List<BarterItem> get myItems => _myItems;
   BarterItem? get targetItem => _targetItem;
   List<BarterDeal> get deals => _deals;
-  List<BarterDeal> get sentDeals => _deals.where((deal) => deal.isSentByMe).toList();
-  List<BarterDeal> get receivedDeals => _deals.where((deal) => !deal.isSentByMe).toList();
+  List<BarterDeal> get sentDeals =>
+      _deals.where((deal) => deal.isSentByMe).toList();
+  List<BarterDeal> get receivedDeals =>
+      _deals.where((deal) => !deal.isSentByMe).toList();
   int get selectedIndex => _selectedIndex;
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
 
-  BarterItem? get selectedItem => _myItems.isEmpty ? null : _myItems[_selectedIndex];
+  BarterItem? get selectedItem =>
+      _myItems.isEmpty ? null : _myItems[_selectedIndex];
 
   /// Selisih harga barang target dengan barang yang ditawarkan.
   /// Positif berarti Pengaju perlu menambah uang tunai.
@@ -58,6 +61,12 @@ class BarterViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Menetapkan barang milik orang lain yang akan ditawar (dari detail barang).
+  void setTargetItem(BarterItem item) {
+    _targetItem = item;
+    notifyListeners();
   }
 
   void selectItem(int index) {
@@ -90,7 +99,8 @@ class BarterViewModel extends ChangeNotifier {
 
   /// Konfirmasi hanya dapat diberikan sekali dan selama tawaran masih berjalan.
   bool canConfirm(BarterDeal deal) {
-    return !deal.myConfirmed && (deal.status == 'Menunggu' || deal.status == 'Negosiasi');
+    return !deal.myConfirmed &&
+        (deal.status == 'Menunggu' || deal.status == 'Negosiasi');
   }
 
   /// Dual-confirmation (FR-13). Mengembalikan true bila konfirmasi tercatat.

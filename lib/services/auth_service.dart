@@ -1,19 +1,13 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io' show Platform;
+
 import '../models/user.dart';
+import 'api_config.dart';
 
 class AuthService {
-  // Gunakan IP yang tepat berdasarkan platform atau device yang dipakai
-  // 10.0.2.2 untuk emulator Android
-  // localhost (127.0.0.1) untuk iOS simulator
-  static String get baseUrl {
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api/auth';
-    }
-    return 'http://127.0.0.1:3000/api/auth';
-  }
+  static String get baseUrl => '${ApiConfig.baseUrl}/auth';
 
   static Future<Map<String, dynamic>> register({
     required String fullName,
@@ -57,17 +51,14 @@ class AuthService {
       final response = await http.post(
         Uri.parse('$baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
         String token = data['data']['token'];
-        
+
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
         await prefs.setString('user_data', jsonEncode(data['data']['user']));
@@ -89,6 +80,12 @@ class AuthService {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');
     await prefs.remove('user_data');
+  }
+
+  /// Token JWT yang tersimpan, atau null bila belum login.
+  static Future<String?> getToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('jwt_token');
   }
 
   static Future<bool> isLoggedIn() async {

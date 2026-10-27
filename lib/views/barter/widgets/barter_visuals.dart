@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 
-/// Pemetaan data barter ke tampilan (ikon & warna). Ditempatkan di lapisan
-/// View agar Model tetap bebas dari kode UI.
+import '../../../theme/app_tokens.dart';
+import '../../../theme/status_style.dart';
+
+/// Pemetaan data barter ke tampilan (ikon & warna).
 class BarterVisuals {
   BarterVisuals._();
 
   static IconData iconForCategory(String category) {
     switch (category) {
       case 'Alat Perkuliahan':
-        return Icons.calculate;
+        return Icons.calculate_outlined;
       case 'Elektronik':
-        return Icons.tablet_mac;
+        return Icons.devices_other_rounded;
       case 'Furnitur Kos':
-        return Icons.desk;
+        return Icons.weekend_outlined;
       case 'Buku & Referensi':
-        return Icons.menu_book;
+        return Icons.menu_book_rounded;
       default:
         return Icons.inventory_2_outlined;
     }
@@ -25,28 +27,15 @@ class BarterVisuals {
       case 'Baru':
       case 'Sangat Baik':
       case 'Baik':
-        return Colors.green;
+        return AppColors.success;
       case 'Cukup':
-        return Colors.orange;
+        return const Color(0xFFB45309);
       default:
-        return Colors.grey;
+        return AppColors.textSecondary;
     }
   }
 
   static Color colorForDealStatus(String status) {
-    switch (status) {
-      case 'Menunggu':
-      case 'Negosiasi':
-        return Colors.orange;
-      case 'Terkunci':
-        return const Color(0xFF0D9488);
-      case 'Selesai':
-        return Colors.green;
-      case 'Ditolak':
-      case 'Dibatalkan':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
+    return StatusStyles.of(status).textColor;
   }
 }

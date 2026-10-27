@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../shared/widgets/shared_widgets.dart';
+import '../../theme/app_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../viewmodels/barter_view_model.dart';
 import 'widgets/barter_visuals.dart';
@@ -8,7 +11,8 @@ class BarterNegotiationScreen extends StatefulWidget {
   const BarterNegotiationScreen({super.key});
 
   @override
-  State<BarterNegotiationScreen> createState() => _BarterNegotiationScreenState();
+  State<BarterNegotiationScreen> createState() =>
+      _BarterNegotiationScreenState();
 }
 
 class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
@@ -18,7 +22,6 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
   @override
   void initState() {
     super.initState();
-    // Nilai awal top-up diambil dari ViewModel (menutup selisih harga).
     _cashAdditionController = TextEditingController(
       text: context.read<BarterViewModel>().suggestedTopUp.toString(),
     );
@@ -31,25 +34,26 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
   }
 
   Future<void> _submitProposal() async {
-    // 1. Validasi form memakai aturan dari ViewModel
     if (!_formKey.currentState!.validate()) return;
 
-    // 2. Kirim lewat ViewModel; state loading dikelola ViewModel
     final viewModel = context.read<BarterViewModel>();
-    final success = await viewModel.submitProposal(_cashAdditionController.text);
+    final success = await viewModel.submitProposal(
+      _cashAdditionController.text.trim(),
+    );
     if (!mounted) return;
 
-    // 3. Feedback & navigasi
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success
-            ? 'Penawaran Barter Berhasil Dikirim!'
-            : viewModel.errorMessage ?? 'Gagal mengirim penawaran'),
-        backgroundColor: success ? const Color(0xFF0D9488) : Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    if (success) Navigator.pop(context);
+    if (success) {
+      AppSnackBar.showSuccess(
+        context,
+        'Penawaran barter berhasil dikirim ke mitra!',
+      );
+      Navigator.pop(context);
+    } else {
+      AppSnackBar.showError(
+        context,
+        viewModel.errorMessage ?? 'Gagal mengirim penawaran barter.',
+      );
+    }
   }
 
   @override
@@ -61,173 +65,214 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
     final isSubmitting = viewModel.isSubmitting;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Negosiasi Barter',
           style: TextStyle(
-            color: Colors.black87,
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
           ),
         ),
-        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Item Exchange Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Banner Langkah Berikutnya (Section 4.3)
+              const StepBanner(
+                title: 'Sesuaikan Tawaran Pertukaran',
+                description: 'Tambahkan cash top-up jika terdapat selisih nilai barang agar kedua belah pihak merasa adil.',
+                stepNumber: 1,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // Kartu Komparasi Dua Barang Berdampingan (Section 5.4)
+              AppCard(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
                   children: [
-                    _buildItemColumn(
-                      'Barang Kamu',
-                      offeredItem?.name ?? '-',
-                      offeredItem == null ? '-' : formatRupiah(offeredItem.price),
-                      BarterVisuals.iconForCategory(offeredItem?.category ?? ''),
-                      const Color(0xFF0D9488),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildItemColumn(
+                          'Barang Kamu',
+                          offeredItem?.name ?? '-',
+                          offeredItem == null ? 0 : offeredItem.price,
+                          BarterVisuals.iconForCategory(
+                            offeredItem?.category ?? '',
+                          ),
+                          AppColors.primary,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 24,
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.swap_horiz_rounded,
+                              color: AppColors.primary,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                        _buildItemColumn(
+                          'Barang Mitra',
+                          targetItem?.name ?? '-',
+                          targetItem == null ? 0 : targetItem.price,
+                          BarterVisuals.iconForCategory(
+                            targetItem?.category ?? '',
+                          ),
+                          AppColors.accent,
+                        ),
+                      ],
                     ),
-                    const Icon(Icons.swap_horiz, color: Color(0xFF0D9488), size: 28),
-                    _buildItemColumn(
-                      'Barang Mereka',
-                      targetItem?.name ?? '-',
-                      targetItem == null ? '-' : formatRupiah(targetItem.price),
-                      BarterVisuals.iconForCategory(targetItem?.category ?? ''),
-                      Colors.orange,
+                    const Divider(height: 24, color: AppColors.outline),
+                    // Baris Selisih Nilai Barang
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Selisih Nilai Taksiran:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          difference > 0
+                              ? '- ${formatRupiah(difference)} (Kamu kurang)'
+                              : '+ ${formatRupiah(-difference)} (Kamu berlebih)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: difference > 0
+                                ? AppColors.error
+                                : AppColors.success,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              // Price Difference
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Selisih Harga:',
-                    style: TextStyle(fontSize: 14, color: Colors.black54),
-                  ),
-                  Text(
-                    difference > 0
-                        ? '- ${formatRupiah(difference)}'
-                        : '+ ${formatRupiah(-difference)}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: difference > 0 ? Colors.red : Colors.green,
-                      fontWeight: FontWeight.bold,
+              const SizedBox(height: AppSpacing.lg),
+
+              // Input Cash Top-Up
+              AppCard(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Cash Top-Up Tunai Tambahan',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Tambah Selisih Tunai (Rp)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Nominal uang tunai yang akan diserahkan saat bertemu di Safe-Meet Point.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      controller: _cashAdditionController,
+                      label: 'Nominal Top-Up (Rp)',
+                      hintText: 'Contoh: 20000',
+                      keyboardType: TextInputType.number,
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 14,
+                        ),
+                        child: Text(
+                          'Rp',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      validator: viewModel.validateTopUp,
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _cashAdditionController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  prefixText: 'Rp ',
-                  prefixStyle: const TextStyle(color: Colors.black87, fontSize: 14),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF0D9488)),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.red),
-                  ),
-                ),
-                validator: viewModel.validateTopUp,
               ),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: isSubmitting ? null : _submitProposal,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0D9488),
-              disabledBackgroundColor: Colors.grey.shade300,
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: isSubmitting
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                : const Text(
-                    'Kirim Penawaran Barter',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.outline)),
+          boxShadow: AppElevation.softShadow,
+        ),
+        child: SafeArea(
+          child: AppPrimaryButton(
+            label: 'Kirim Penawaran Barter',
+            icon: Icons.send_rounded,
+            isLoading: isSubmitting,
+            onPressed: _submitProposal,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildItemColumn(String label, String name, String price, IconData icon, Color color) {
+  Widget _buildItemColumn(
+    String roleLabel,
+    String name,
+    int price,
+    IconData icon,
+    Color badgeColor,
+  ) {
     return Expanded(
       child: Column(
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.surfaceVariant,
+              borderRadius: AppRadius.medium,
             ),
-            child: Icon(icon, color: Colors.grey.shade400, size: 40),
+            child: Icon(icon, color: AppColors.primary, size: 32),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.12),
+              borderRadius: AppRadius.pill,
+            ),
+            child: Text(
+              roleLabel,
+              style: TextStyle(
+                fontSize: 10,
+                color: badgeColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -235,13 +280,14 @@ class _BarterNegotiationScreenState extends State<BarterNegotiationScreen> {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            price,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
+          const SizedBox(height: 2),
+          PriceTag(price: price, fontSize: 13),
         ],
       ),
     );

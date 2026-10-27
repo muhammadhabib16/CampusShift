@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../../models/barter_item.dart';
+import '../../../shared/widgets/shared_widgets.dart';
+import '../../../theme/app_tokens.dart';
 import '../../../utils/formatters.dart';
 import '../../../viewmodels/barter_view_model.dart';
 import '../barter_negotiation_screen.dart';
@@ -8,7 +12,8 @@ import 'barter_visuals.dart';
 class BarterItemSelectionSheet extends StatelessWidget {
   const BarterItemSelectionSheet({super.key});
 
-  static void show(BuildContext context) {
+  static void show(BuildContext context, {BarterItem? target}) {
+    if (target != null) context.read<BarterViewModel>().setTargetItem(target);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -21,12 +26,18 @@ class BarterItemSelectionSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<BarterViewModel>();
     final myItems = viewModel.myItems;
+
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.xl,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,93 +47,127 @@ class BarterItemSelectionSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
+                color: AppColors.outline,
+                borderRadius: AppRadius.pill,
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
           const Text(
             'Pilih Barang untuk Ditukar',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           const Text(
-            'Pilih salah satu aset aktifmu untuk mengajukan barter.',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.black54,
-            ),
+            'Pilih salah satu barang aktifmu untuk mengajukan penawaran barter.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
-          const SizedBox(height: 24),
-          RadioGroup<int>(
-            groupValue: viewModel.selectedIndex,
-            onChanged: (value) => viewModel.selectItem(value!),
-            child: ListView.separated(
+          const SizedBox(height: AppSpacing.lg),
+
+          if (myItems.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+              child: Center(
+                child: Text(
+                  'Kamu belum memiliki barang aktif yang bisa ditukarkan.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: myItems.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final item = myItems[index];
                 final isSelected = viewModel.selectedIndex == index;
-                return GestureDetector(
+
+                return InkWell(
                   onTap: () => viewModel.selectItem(index),
+                  borderRadius: AppRadius.medium,
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      color: isSelected
+                          ? AppColors.primaryContainer.withValues(alpha: 0.35)
+                          : AppColors.surface,
+                      borderRadius: AppRadius.medium,
                       border: Border.all(
-                        color: isSelected ? const Color(0xFF0D9488) : Colors.grey.shade200,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.outline,
                         width: isSelected ? 2 : 1,
                       ),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 50,
-                          height: 50,
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppColors.surfaceVariant,
+                            borderRadius: AppRadius.small,
                           ),
-                          child: Icon(BarterVisuals.iconForCategory(item.category), color: Colors.grey.shade400, size: 28),
+                          child: Icon(
+                            BarterVisuals.iconForCategory(item.category),
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 item.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               Row(
                                 children: [
                                   Text(
                                     formatRupiah(item.price),
                                     style: const TextStyle(
                                       fontSize: 12,
-                                      color: Colors.black54,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    item.condition,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: BarterVisuals.colorForCondition(item.condition),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceVariant,
+                                      borderRadius: AppRadius.pill,
+                                    ),
+                                    child: Text(
+                                      item.condition,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: BarterVisuals.colorForCondition(
+                                          item.condition,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -132,7 +177,11 @@ class BarterItemSelectionSheet extends StatelessWidget {
                         ),
                         Radio<int>(
                           value: index,
-                          activeColor: const Color(0xFF0D9488),
+                          groupValue: viewModel.selectedIndex,
+                          activeColor: AppColors.primary,
+                          onChanged: (val) {
+                            if (val != null) viewModel.selectItem(val);
+                          },
                         ),
                       ],
                     ),
@@ -140,30 +189,22 @@ class BarterItemSelectionSheet extends StatelessWidget {
                 );
               },
             ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: viewModel.selectedItem == null
+          const SizedBox(height: AppSpacing.xl),
+
+          AppPrimaryButton(
+            label: 'Lanjut ke Negosiasi Barter',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: myItems.isEmpty
                 ? null
                 : () {
-                    // Ambil Navigator sebelum sheet ditutup, karena context sheet tidak lagi aktif setelah pop
-                    final navigator = Navigator.of(context);
-                    navigator.pop(); // Close sheet
-                    navigator.push(
-                      MaterialPageRoute(builder: (context) => const BarterNegotiationScreen()),
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const BarterNegotiationScreen(),
+                      ),
                     );
                   },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0D9488),
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Konfirmasi Pilihan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
           ),
         ],
       ),

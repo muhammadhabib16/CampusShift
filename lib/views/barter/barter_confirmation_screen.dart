@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../core/app_strings.dart';
 import '../../models/barter_deal.dart';
+import '../../shared/widgets/shared_widgets.dart';
+import '../../theme/app_tokens.dart';
 import '../../utils/formatters.dart';
 import '../../viewmodels/barter_view_model.dart';
+import '../safe_meet/meetup_form_screen.dart';
 import 'widgets/barter_visuals.dart';
 
 /// Detail Tawaran & Konfirmasi Kesepakatan (FR-13 Dual-Confirmation).
@@ -12,21 +17,46 @@ class BarterConfirmationScreen extends StatelessWidget {
 
   Future<void> _confirm(BuildContext context, BarterDeal deal) async {
     final viewModel = context.read<BarterViewModel>();
-    final messenger = ScaffoldMessenger.of(context);
     final success = await viewModel.confirmDeal(deal.id);
+    if (!context.mounted) return;
+
     final updated = viewModel.dealById(deal.id);
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(!success
-            ? viewModel.errorMessage ?? 'Gagal mengonfirmasi kesepakatan'
-            : updated?.status == 'Terkunci'
-                ? 'Kesepakatan Berhasil Dikunci!'
-                : 'Konfirmasi tercatat, menunggu ${deal.partnerName}'),
-        backgroundColor: success ? const Color(0xFF0D9488) : Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
+    if (success) {
+      if (updated?.status == 'Terkunci' || updated?.status == 'Locked') {
+        AppSnackBar.showSuccess(
+          context,
+          'Kesepakatan Berhasil Dikunci (Dual-Confirmation)!',
+        );
+      } else {
+        AppSnackBar.showInfo(
+          context,
+          'Konfirmasi tercatat, menunggu persetujuan ${deal.partnerName}.',
+        );
+      }
+    } else {
+      AppSnackBar.showError(
+        context,
+        viewModel.errorMessage ?? 'Gagal mengonfirmasi kesepakatan.',
+      );
+    }
+  }
+
+  Future<void> _cancelDeal(BuildContext context, BarterDeal deal) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Batalkan Tawaran Barter?',
+      message: 'Apakah kamu yakin ingin membatalkan kesepakatan barter ini? Status kesepakatan akan berubah menjadi Dibatalkan.',
+      confirmLabel: 'Batalkan Barter',
+      cancelLabel: AppStrings.cancel,
+      destructive: true,
+      confirmIcon: Icons.cancel_outlined,
     );
+
+    if (confirmed && context.mounted) {
+      AppSnackBar.showInfo(context, 'Kesepakatan barter dibatalkan.');
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -35,180 +65,255 @@ class BarterConfirmationScreen extends StatelessWidget {
     final deal = viewModel.dealById(dealId);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFB),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Konfirmasi Barter',
           style: TextStyle(
-            color: Colors.black87,
             fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
           ),
         ),
-        centerTitle: true,
       ),
       body: deal == null
-          ? const Center(child: Text('Tawaran tidak ditemukan'))
+          ? const Center(
+              child: EmptyState(
+                title: 'Tawaran Tidak Ditemukan',
+                description: 'Data kesepakatan barter tidak tersedia.',
+              ),
+            )
           : _buildContent(context, viewModel, deal),
     );
   }
 
-  Widget _buildContent(BuildContext context, BarterViewModel viewModel, BarterDeal deal) {
-    final isLocked = deal.status == 'Terkunci';
+  Widget _buildContent(
+    BuildContext context,
+    BarterViewModel viewModel,
+    BarterDeal deal,
+  ) {
+    final isLocked = deal.status == 'Terkunci' || deal.status == 'Locked';
     final canConfirm = viewModel.canConfirm(deal);
     final topUpPayer = deal.topUpPaidByMe ? 'Kamu' : deal.partnerName;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         children: [
-          // Barang yang ditukar
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isLocked ? const Color(0xFF0D9488) : Colors.grey.shade300,
-                width: 1.5,
-              ),
+          // Banner Langkah Berikutnya (Dual-Confirmation)
+          if (!isLocked) ...[
+            StepBanner(
+              title: 'Dual-Confirmation Barter',
+              description: 'Kedua belah pihak wajib menyetujui rincian barang dan cash top-up sebelum jadwal Safe-Meet Point dapat dibuat.',
+              stepNumber: 2,
             ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+
+          // Kartu Barang yang Ditukar
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      isLocked ? 'Asset Terkunci' : 'Status: ${deal.status}',
-                      style: TextStyle(
-                        color: BarterVisuals.colorForDealStatus(deal.status),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                      isLocked ? 'Status: Terkunci (Locked)' : 'Status Tawaran',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    Icon(
-                      isLocked ? Icons.lock_outline : Icons.lock_open_outlined,
-                      color: BarterVisuals.colorForDealStatus(deal.status),
-                      size: 18,
-                    ),
+                    StatusBadge(status: deal.status),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildAssetItem(
-                      deal.myItem.name,
-                      BarterVisuals.iconForCategory(deal.myItem.category),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Icon(Icons.swap_horiz, color: Colors.grey.shade400, size: 24),
-                    ),
-                    _buildAssetItem(
-                      deal.partnerItem.name,
-                      BarterVisuals.iconForCategory(deal.partnerItem.category),
-                    ),
-                  ],
+                const SizedBox(height: AppSpacing.md),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: AppRadius.medium,
+                  ),
+                  child: Row(
+                    children: [
+                      _buildAssetItem(
+                        deal.myItem.name,
+                        BarterVisuals.iconForCategory(deal.myItem.category),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
+                        child: Icon(
+                          Icons.swap_horiz_rounded,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                      _buildAssetItem(
+                        deal.partnerItem.name,
+                        BarterVisuals.iconForCategory(
+                          deal.partnerItem.category,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
+
           // Rincian Kesepakatan
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Rincian Kesepakatan',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 _buildDetailRow('Mitra Barter', deal.partnerName),
-                const Divider(height: 24, color: Color(0xFFEEEEEE)),
+                const Divider(height: 20, color: AppColors.outline),
                 _buildDetailRow(
-                  'Tambahan Tunai',
-                  formatRupiah(deal.cashTopUp),
-                  valueColor: const Color(0xFF0D9488),
+                  'Tambahan Tunai (Top-Up)',
+                  deal.cashTopUp > 0
+                      ? formatRupiah(deal.cashTopUp)
+                      : 'Rp0 (Tanpa Tunai)',
+                  valueColor: AppColors.primary,
                 ),
                 if (deal.cashTopUp > 0) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   _buildDetailRow('Dibayar oleh', topUpPayer),
                 ],
-                const Divider(height: 24, color: Color(0xFFEEEEEE)),
-                _buildDetailRow('Konfirmasi Kamu', deal.myConfirmed ? 'Sudah' : 'Belum'),
-                const SizedBox(height: 12),
+                const Divider(height: 20, color: AppColors.outline),
+                _buildDetailRow(
+                  'Konfirmasi Kamu',
+                  deal.myConfirmed ? 'Sudah Disetujui' : 'Belum Disetujui',
+                  valueColor: deal.myConfirmed
+                      ? AppColors.success
+                      : AppColors.accent,
+                ),
+                const SizedBox(height: 8),
                 _buildDetailRow(
                   'Konfirmasi ${deal.partnerName}',
-                  deal.partnerConfirmed ? 'Sudah' : 'Belum',
+                  deal.partnerConfirmed
+                      ? 'Sudah Disetujui'
+                      : 'Menunggu Konfirmasi',
+                  valueColor: deal.partnerConfirmed
+                      ? AppColors.success
+                      : AppColors.accent,
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          // Titik temu dan jadwal COD dibuat di Modul 2 setelah kesepakatan Locked.
-          Text(
-            isLocked
-                ? 'Kesepakatan terkunci. Ajukan titik temu dan jadwal COD dari menu Pertemuan.'
-                : 'Titik temu dan jadwal COD diajukan setelah kedua pihak mengonfirmasi.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
-          const SizedBox(height: 24),
-          if (canConfirm)
-            ElevatedButton(
-              onPressed: viewModel.isSubmitting ? null : () => _confirm(context, deal),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D9488),
-                disabledBackgroundColor: Colors.grey.shade300,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Banner Menunggu Konfirmasi Mitra (Section 5.4)
+          if (deal.myConfirmed && !deal.partnerConfirmed && !isLocked) ...[
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: AppColors.primaryContainer,
+                borderRadius: AppRadius.large,
+                border: Border.all(color: const Color(0xFF99F6E4)),
               ),
-              child: viewModel.isSubmitting
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text(
-                      'Setuju & Kunci Kesepakatan',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.schedule_rounded,
+                    color: AppColors.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Menunggu Konfirmasi Mitra',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onPrimaryContainer,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Kamu telah menyetujui. Menunggu konfirmasi dari ${deal.partnerName} untuk mengunci kesepakatan.',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.onPrimaryContainer,
+                          ),
+                        ),
+                      ],
                     ),
-            )
-          else if (deal.myConfirmed && !isLocked && deal.status != 'Selesai')
-            // BR-18: setelah satu pihak mengonfirmasi
-            Text(
-              'Menunggu konfirmasi ${deal.partnerName}',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Colors.orange,
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
+
+          // Tombol Aksi Utama
+          if (canConfirm) ...[
+            AppPrimaryButton(
+              label: 'Setuju & Kunci Kesepakatan',
+              icon: Icons.lock_outline,
+              isLoading: viewModel.isSubmitting,
+              onPressed: () => _confirm(context, deal),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            AppSecondaryButton(
+              label: 'Batalkan Tawaran',
+              isDestructive: true,
+              onPressed: () => _cancelDeal(context, deal),
+            ),
+          ] else if (isLocked) ...[
+            StepBanner(
+              title: 'Kesepakatan Telah Terkunci!',
+              description: 'Silakan ajukan titik Safe-Meet Point dan jadwal pertemuan COD untuk serah terima barang.',
+              stepNumber: 3,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppPrimaryButton(
+              label: 'Ajukan Titik Temu & Jadwal COD',
+              icon: Icons.calendar_month_rounded,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MeetupFormScreen(
+                      itemId:
+                          int.tryParse(
+                            deal.partnerItem.id.replaceAll(RegExp(r'\D'), ''),
+                          ) ??
+                          0,
+                      itemTitle:
+                          '${deal.partnerItem.name} ⇄ ${deal.myItem.name}',
+                      itemPrice: deal.cashTopUp > 0
+                          ? 'Top-up ${formatRupiah(deal.cashTopUp)}'
+                          : 'Tanpa selisih tunai',
+                      itemType: 'Barter',
+                      ownerId: 0,
+                      ownerName: deal.partnerName,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );
@@ -219,21 +324,26 @@ class BarterConfirmationScreen extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(6),
+              color: AppColors.surface,
+              borderRadius: AppRadius.small,
+              border: Border.all(color: AppColors.outline),
             ),
-            child: Icon(icon, color: Colors.grey.shade500, size: 20),
+            child: Icon(icon, color: AppColors.primary, size: 20),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -241,17 +351,25 @@ class BarterConfirmationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {Color valueColor = Colors.black87}) {
+  Widget _buildDetailRow(
+    String label,
+    String value, {
+    Color valueColor = AppColors.textPrimary,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 13, color: Colors.black54),
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         Text(
           value,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: valueColor),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: valueColor,
+          ),
         ),
       ],
     );

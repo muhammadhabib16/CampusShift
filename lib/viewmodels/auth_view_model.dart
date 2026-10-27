@@ -10,6 +10,7 @@ class AuthViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _message;
   User? _currentUser;
+  String? _token;
 
   bool get isLoading => _isLoading;
 
@@ -18,6 +19,9 @@ class AuthViewModel extends ChangeNotifier {
 
   /// Pengguna yang sedang login; null bila belum login (atau mode uji debug).
   User? get currentUser => _currentUser;
+
+  /// Token JWT untuk header `Authorization` pada service modul lain.
+  String? get token => _token;
 
   /// Nama untuk sapaan di layar; memakai label umum bila data belum ada.
   String get displayName {
@@ -30,6 +34,7 @@ class AuthViewModel extends ChangeNotifier {
   Future<bool> restoreSession() async {
     final loggedIn = await AuthService.isLoggedIn();
     _currentUser = loggedIn ? await AuthService.getCurrentUser() : null;
+    _token = loggedIn ? await AuthService.getToken() : null;
     notifyListeners();
     return loggedIn;
   }
@@ -44,8 +49,12 @@ class AuthViewModel extends ChangeNotifier {
     _setLoading(true);
     final result = await AuthService.login(email: email, password: password);
     final success = result['success'] == true;
-    _message = result['message'] ?? (success ? 'Login berhasil' : 'Login gagal');
-    if (success) _currentUser = await AuthService.getCurrentUser();
+    _message =
+        result['message'] ?? (success ? 'Login berhasil' : 'Login gagal');
+    if (success) {
+      _currentUser = await AuthService.getCurrentUser();
+      _token = await AuthService.getToken();
+    }
     _setLoading(false);
     return success;
   }
@@ -56,21 +65,42 @@ class AuthViewModel extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
-    if (fullName.isEmpty || nim.isEmpty || email.isEmpty || password.isEmpty) {
+    final trimmedName = fullName.trim();
+    final trimmedNim = nim.trim();
+    final trimmedEmail = email.trim().toLowerCase();
+
+    if (trimmedName.isEmpty ||
+        trimmedNim.isEmpty ||
+        trimmedEmail.isEmpty ||
+        password.isEmpty) {
       _message = 'Semua kolom wajib diisi';
+      notifyListeners();
+      return false;
+    }
+
+    if (!RegExp(r'^\d{10}$').hasMatch(trimmedNim)) {
+      _message = 'NIM harus berupa 10 digit angka (Sesuai format UNAND)';
+      notifyListeners();
+      return false;
+    }
+
+    if (!trimmedEmail.endsWith('@student.unand.ac.id') &&
+        !trimmedEmail.endsWith('@unand.ac.id')) {
+      _message = 'Pendaftaran saat ini khusus mahasiswa Universitas Andalas (@student.unand.ac.id)';
       notifyListeners();
       return false;
     }
 
     _setLoading(true);
     final result = await AuthService.register(
-      fullName: fullName,
-      nim: nim,
-      email: email,
+      fullName: trimmedName,
+      nim: trimmedNim,
+      email: trimmedEmail,
       password: password,
     );
     final success = result['success'] == true;
-    _message = result['message'] ??
+    _message =
+        result['message'] ??
         (success ? 'Registrasi berhasil, silakan login' : 'Registrasi gagal');
     _setLoading(false);
     return success;
@@ -81,6 +111,7 @@ class AuthViewModel extends ChangeNotifier {
     await AuthService.logout();
     _message = null;
     _currentUser = null;
+    _token = null;
     notifyListeners();
   }
 

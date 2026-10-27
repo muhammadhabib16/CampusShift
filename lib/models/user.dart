@@ -22,9 +22,9 @@ class User {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'full_name': fullName,
-        'nim': nim,
-        'email': email,
-      };
+    'id': id,
+    'full_name': fullName,
+    'nim': nim,
+    'email': email,
+  };
 }

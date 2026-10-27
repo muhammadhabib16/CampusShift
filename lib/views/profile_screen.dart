@@ -1,267 +1,297 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'login_screen.dart';
+
+import '../core/app_strings.dart';
+import '../shared/widgets/shared_widgets.dart';
+import '../theme/app_tokens.dart';
 import '../viewmodels/auth_view_model.dart';
+import 'login_screen.dart';
+import 'safe_meet/my_meetups_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Keluar dari Akun',
+      message: 'Apakah kamu yakin ingin keluar? Sesi login di perangkat ini akan berakhir dan kamu harus masuk kembali.',
+      confirmLabel: 'Keluar',
+      cancelLabel: AppStrings.cancel,
+      destructive: true,
+      confirmIcon: Icons.logout_rounded,
+    );
+
+    if (!confirmed || !context.mounted) return;
+
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    await context.read<AuthViewModel>().logout();
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(
+              Icons.info_outline_rounded,
+              color: AppColors.onPrimary,
+              size: 20,
+            ),
+            SizedBox(width: AppSpacing.sm),
+            Text('Berhasil keluar dari akun.'),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final authViewModel = context.watch<AuthViewModel>();
     final user = authViewModel.currentUser;
+    final displayName = authViewModel.displayName;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFB),
-      body: CustomScrollView(
-        slivers: [
-          // Header
-          SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 56, 16, 24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-              ),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Profil Saya'),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.lg,
+        ),
+        child: Column(
+          children: [
+            // Kartu Identitas Profil (AvatarWithName & Reputasi)
+            AppCard(
+              padding: const EdgeInsets.all(AppSpacing.xl),
               child: Column(
                 children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 48,
-                        backgroundColor: const Color(0xFF0D9488).withValues(alpha: 0.1),
-                        child: const Icon(
-                          Icons.person_rounded,
-                          size: 56,
-                          color: Color(0xFF0D9488),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0D9488),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            size: 14,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                  AvatarWithName(
+                    name: displayName,
+                    subtitle: 'NIM: ${user?.nim ?? '-'} • Universitas Andalas',
+                    radius: 36,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    authViewModel.displayName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'NIM: ${user?.nim ?? '-'} • Universitas Andalas',
-                    style: const TextStyle(fontSize: 13, color: Colors.black45),
-                  ),
-                  const SizedBox(height: 12),
-                  // SEMENTARA: reputasi & statistik masih contoh sampai Modul 4
-                  // (Serah Terima & Reputasi) menyediakan ViewModel-nya.
+                  const SizedBox(height: AppSpacing.lg),
+                  const Divider(color: AppColors.outline),
+                  const SizedBox(height: AppSpacing.md),
+                  // Baris Skor Reputasi
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-                      SizedBox(width: 4),
-                      Text(
-                        'Reputasi 4.3/5.0',
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Skor Reputasi Mahasiswa',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.amber,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  // Stats Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildStat('14', 'Barang\nDijual'),
-                      Container(
-                        width: 1,
-                        height: 36,
-                        color: Colors.grey.shade200,
-                      ),
-                      _buildStat('28', 'Transaksi'),
-                      Container(
-                        width: 1,
-                        height: 36,
-                        color: Colors.grey.shade200,
-                      ),
-                      _buildStat('9', 'Barter\nBerhasil'),
+                      RatingStars(rating: 4.8, reviewCount: 14, size: 20),
                     ],
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(height: AppSpacing.lg),
 
-          // Menu Items
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+            // Ringkasan Aktivitas Sirkular
+            AppCard(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildStatItem('12', 'Listing Aktif'),
+                  Container(width: 1, height: 36, color: AppColors.outline),
+                  _buildStatItem('28', 'Transaksi'),
+                  Container(width: 1, height: 36, color: AppColors.outline),
+                  _buildStatItem('9', 'Barter Sukses'),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Menu Transaksi & Layanan
+            AppCard(
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  _buildMenuGroup([
-                    ProfileMenuItem(icon: Icons.edit_rounded, label: 'Edit Profil', color: const Color(0xFF0D9488)),
-                    ProfileMenuItem(icon: Icons.list_alt_rounded, label: 'Listing Saya', color: Colors.blue),
-                    ProfileMenuItem(icon: Icons.receipt_long_rounded, label: 'Riwayat Transaksi', color: Colors.orange),
-                    ProfileMenuItem(icon: Icons.swap_horiz_rounded, label: 'Barter Saya', color: Colors.purple),
-                    ProfileMenuItem(icon: Icons.settings_rounded, label: 'Pengaturan', color: Colors.grey),
-                  ]),
-                  const SizedBox(height: 12),
-                  _buildMenuGroup([
-                    ProfileMenuItem(icon: Icons.help_outline_rounded, label: 'Bantuan & FAQ', color: Colors.blue),
-                    ProfileMenuItem(icon: Icons.shield_outlined, label: 'Kebijakan Privasi', color: Colors.green),
-                  ]),
-                  const SizedBox(height: 12),
-                  // Logout Button
-                  GestureDetector(
-                    onTap: () async {
-                      final navigator = Navigator.of(context);
-                      // Hapus token & data pengguna dari perangkat sebelum kembali ke Login
-                      await context.read<AuthViewModel>().logout();
-                      navigator.pushReplacement(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.event_note_rounded,
+                    title: 'Jadwal & Serah Terima QR',
+                    subtitle: 'Modul 2 & 4: Pertemuan dan QR COD',
+                    color: AppColors.primary,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MyMeetupsScreen(),
+                        ),
                       );
                     },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.logout_rounded, color: Colors.red, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Keluar',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
-                  const SizedBox(height: 32),
+                  const Divider(indent: 56, color: AppColors.outline),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.inventory_2_outlined,
+                    title: 'Barang Saya (Listing)',
+                    subtitle: 'Kelola barang jual, barter, dan hibah',
+                    color: const Color(0xFF1D4ED8),
+                    onTap: () {
+                      AppSnackBar.showInfo(
+                        context,
+                        'Buka tab Katalog untuk mengelola listing.',
+                      );
+                    },
+                  ),
+                  const Divider(indent: 56, color: AppColors.outline),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.swap_horiz_rounded,
+                    title: 'Riwayat Tawaran Barter',
+                    subtitle: 'Tawaran masuk dan keluar',
+                    color: AppColors.accent,
+                    onTap: () {
+                      AppSnackBar.showInfo(
+                        context,
+                        'Buka tab Barter pada navigasi bawah.',
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.lg),
+
+            // Menu Pengaturan & Bantuan
+            AppCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.help_outline_rounded,
+                    title: 'Pusat Bantuan & Panduan',
+                    subtitle: 'FAQ transaksi aman di kampus Unand',
+                    color: AppColors.textSecondary,
+                    onTap: () {
+                      AppSnackBar.showInfo(
+                        context,
+                        'Pusat bantuan sedang disiapkan.',
+                      );
+                    },
+                  ),
+                  const Divider(indent: 56, color: AppColors.outline),
+                  _buildMenuItem(
+                    context,
+                    icon: Icons.shield_outlined,
+                    title: 'Kebijakan Privasi & Keamanan',
+                    subtitle: 'Ketentuan Safe-Meet Point & Verifikasi NIM',
+                    color: AppColors.success,
+                    onTap: () {
+                      AppSnackBar.showInfo(
+                        context,
+                        'Kebijakan privasi terverifikasi Unand.',
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Tombol Keluar (Destruktif dengan ConfirmDialog)
+            AppSecondaryButton(
+              label: 'Keluar dari Akun',
+              icon: Icons.logout_rounded,
+              isDestructive: true,
+              onPressed: () => _handleLogout(context),
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStat(String value, String label) {
+  Widget _buildStatItem(String value, String label) {
     return Column(
       children: [
         Text(
           value,
           style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0D9488),
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, color: Colors.black45),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondary,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildMenuGroup(List<ProfileMenuItem> items) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListView.separated(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        itemCount: items.length,
-        separatorBuilder: (_, i) => Divider(
-          height: 1,
-          indent: 56,
-          color: Colors.grey.shade100,
+  Widget _buildMenuItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: AppRadius.medium,
         ),
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return ListTile(
-            leading: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: item.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(item.icon, size: 20, color: item.color),
-            ),
-            title: Text(
-              item.label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-            trailing: const Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.black26,
-              size: 20,
-            ),
-            onTap: () {},
-          );
-        },
+        child: Icon(icon, size: 20, color: color),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          color: AppColors.textSecondary,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.chevron_right_rounded,
+        size: 20,
+        color: Color(0xFF94A3B8),
       ),
     );
   }
-}
-
-class ProfileMenuItem {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const ProfileMenuItem({required this.icon, required this.label, required this.color});
 }

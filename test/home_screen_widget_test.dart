@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 
 void main() {
   testWidgets('Beranda menampilkan barang terbaru dari HomeViewModel', (tester) async {
-    final homeViewModel = HomeViewModel(HomeService());
+    final homeViewModel = HomeViewModel(HomeService(fetchItems: () async => []));
     await homeViewModel.loadLatestListings();
     await tester.pumpWidget(
       MultiProvider(
@@ -22,6 +22,13 @@ void main() {
 
     expect(find.text('Halo, Mahasiswa Unand!'), findsOneWidget);
     expect(find.text('Mahasiswa'), findsOneWidget);
+
+    // Banner Modul 2 & 4 mendorong daftar barang ke bawah layar uji.
+    await tester.scrollUntilVisible(
+      find.text('Buku Kalkulus Purcell Ed. 9'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Buku Kalkulus Purcell Ed. 9'), findsOneWidget);
     expect(find.text('Rp 85.000'), findsOneWidget);
     expect(find.text('Unand • FMIPA'), findsOneWidget);
