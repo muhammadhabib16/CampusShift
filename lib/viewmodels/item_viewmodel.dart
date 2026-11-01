@@ -4,20 +4,22 @@ import 'package:flutter/material.dart';
 
 import '../models/item_model.dart';
 import '../services/item_service.dart';
+import '../services/notification_service.dart';
 
 class ItemViewModel extends ChangeNotifier {
   List<ItemModel> _catalogItems = [];
+  List<ItemModel> _myItems = [];
   bool _isLoading = false;
   String _errorMessage = '';
 
-  // Filter States
   String _searchQuery = '';
   String _selectedCategory = 'Semua Kategori';
   String _selectedType = 'Semua Transaksi';
   double _minPrice = 0;
-  double _maxPrice = 250000; // Default max di Figma
+  double _maxPrice = 250000;
 
   List<ItemModel> get catalogItems => _catalogItems;
+  List<ItemModel> get myItems => _myItems;
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   String get selectedCategory => _selectedCategory;
@@ -25,27 +27,22 @@ class ItemViewModel extends ChangeNotifier {
   double get minPrice => _minPrice;
   double get maxPrice => _maxPrice;
 
+  // FETCH KATALOG
   Future<void> fetchCatalog() async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
-
     try {
-      // Data mentah dari service (Mock)
-      final items = await ItemService.getCatalog(
+      // Backend sudah menangani seluruh logic filter (termasuk harga 0 untuk hibah)
+      _catalogItems = await ItemService.getCatalog(
         search: _searchQuery,
         category: _selectedCategory,
         type: _selectedType,
+        minPrice: _minPrice,
+        maxPrice: _maxPrice,
       );
-
-      // Filter lokal untuk rentang harga (karena mock data)
-      _catalogItems = items.where((item) {
-        if (item.listingType == 'Hibah')
-          return true; // Hibah selalu lolos filter harga
-        return item.price >= _minPrice && item.price <= _maxPrice;
-      }).toList();
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -76,6 +73,7 @@ class ItemViewModel extends ChangeNotifier {
     fetchCatalog();
   }
 
+  // TAMBAH LISTING
   Future<bool> addListing(Map<String, dynamic> data, List<File> images) async {
     _isLoading = true;
     notifyListeners();
@@ -84,9 +82,90 @@ class ItemViewModel extends ChangeNotifier {
       success = await ItemService.createListing(data, images);
       if (success) {
         await fetchCatalog();
+        await fetchMyItems();
+        // --- TRIGGER NOTIFIKASI SIMULASI FR-05 ---
+        NotificationService.scheduleStaleListingAlert(data['judul']);
       }
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+    return success;
+  }
+
+  // FETCH BARANG SAYA
+  Future<void> fetchMyItems() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      _myItems = await ItemService.getMyItems();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // UBAH STATUS (ARSIPKAN / AKTIFKAN)
+  Future<void> changeItemStatus(String id, String newStatus) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      if (newStatus == 'Archived') {
+        await ItemService.archiveListing(id);
+      } else if (newStatus == 'Available') {
+        await ItemService.activateListing(id);
+      }
+      // Ambil data terbaru dari server setelah berhasil diubah
+      await fetchMyItems();
+      await fetchCatalog();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // HAPUS PERMANEN
+  Future<void> deleteMyItem(String id) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await ItemService.deleteListing(id);
+      // Ambil data terbaru dari server setelah berhasil dihapus
+      await fetchMyItems();
+      await fetchCatalog();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // EDIT LISTING
+  Future<bool> updateListing(
+    String id,
+    Map<String, dynamic> data,
+    List<File> images,
+  ) async {
+    _isLoading = true;
+    notifyListeners();
+    bool success = false;
+    try {
+      success = await ItemService.updateListing(id, data, images);
+      if (success) {
+        await fetchCatalog();
+        await fetchMyItems();
+      }
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
       notifyListeners();

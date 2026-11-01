@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/meetup_repository.dart';
 import '../viewmodels/auth_view_model.dart';
+import '../viewmodels/home_view_model.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'barter/barter_list_screen.dart';
@@ -38,6 +39,12 @@ class _MainScreenState extends State<MainScreen> {
         nim: user.nim,
       );
     }
+
+    // Sinkronisasi: Muat data "Barang Terbaru" dari Modul 1 (Naufal)
+    // agar Home Screen menampilkan listing terkini dari ItemService.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HomeViewModel>().loadLatestListings();
+    });
   }
 
   void _selectTab(int index) {

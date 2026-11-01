@@ -5,6 +5,8 @@ import '../core/app_strings.dart';
 import '../shared/widgets/shared_widgets.dart';
 import '../theme/app_tokens.dart';
 import '../viewmodels/auth_view_model.dart';
+import 'barter/barter_list_screen.dart';
+import 'listing/my_items_screen.dart';
 import 'login_screen.dart';
 import 'safe_meet/my_meetups_screen.dart';
 
@@ -15,7 +17,8 @@ class ProfileScreen extends StatelessWidget {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Keluar dari Akun',
-      message: 'Apakah kamu yakin ingin keluar? Sesi login di perangkat ini akan berakhir dan kamu harus masuk kembali.',
+      message:
+          'Apakah kamu yakin ingin keluar? Sesi login di perangkat ini akan berakhir dan kamu harus masuk kembali.',
       confirmLabel: 'Keluar',
       cancelLabel: AppStrings.cancel,
       destructive: true,
@@ -150,9 +153,11 @@ class ProfileScreen extends StatelessWidget {
                     subtitle: 'Kelola barang jual, barter, dan hibah',
                     color: const Color(0xFF1D4ED8),
                     onTap: () {
-                      AppSnackBar.showInfo(
+                      Navigator.push(
                         context,
-                        'Buka tab Katalog untuk mengelola listing.',
+                        MaterialPageRoute(
+                          builder: (_) => const MyItemsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -164,9 +169,11 @@ class ProfileScreen extends StatelessWidget {
                     subtitle: 'Tawaran masuk dan keluar',
                     color: AppColors.accent,
                     onTap: () {
-                      AppSnackBar.showInfo(
+                      Navigator.push(
                         context,
-                        'Buka tab Barter pada navigasi bawah.',
+                        MaterialPageRoute(
+                          builder: (_) => const BarterListScreen(),
+                        ),
                       );
                     },
                   ),

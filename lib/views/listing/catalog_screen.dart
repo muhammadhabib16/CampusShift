@@ -9,6 +9,7 @@ import '../../utils/formatters.dart';
 import '../../viewmodels/item_viewmodel.dart';
 import 'add_listing_screen.dart';
 import 'item_detail_screen.dart';
+import 'my_items_screen.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -44,6 +45,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text(
           'Katalog Barang',
           style: TextStyle(
@@ -55,6 +57,20 @@ class _CatalogScreenState extends State<CatalogScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         actions: [
+          // Tombol Barang Saya — sinkron dengan Profile "Listing Saya"
+          IconButton(
+            tooltip: 'Barang Saya',
+            icon: const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.primary,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyItemsScreen()),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Filter Lanjutan',
             icon: const Icon(Icons.tune_rounded, color: AppColors.primary),
@@ -128,6 +144,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       'Buku & Referensi',
                       'Elektronik & Gadget',
                       'Furnitur Kos',
+                      'Alat Perkuliahan',
                     ].map((category) {
                       final isSelected = viewModel.selectedCategory == category;
                       return Padding(

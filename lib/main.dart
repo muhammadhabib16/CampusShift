@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'services/barter_service.dart';
 import 'services/home_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/auth_view_model.dart';
 import 'viewmodels/barter_view_model.dart';
@@ -20,6 +21,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Format tanggal Indonesia untuk jadwal pertemuan (Modul 2).
   await initializeDateFormatting('id_ID', null);
+  // Inisialisasi notifikasi lokal (Modul 1).
+  await NotificationService.init();
   runApp(
     // ViewModel didaftarkan di atas MaterialApp agar dapat diakses semua layar.
     // Modul lain menambahkan ViewModel-nya di daftar ini.

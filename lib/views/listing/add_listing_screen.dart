@@ -137,7 +137,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
             // Banner Langkah Berikutnya (Section 4.3)
             const StepBanner(
               title: 'Lengkapi Informasi Barang',
-              description: 'Foto fisik asli dan deskripsi yang transparan meningkatkan kepercayaan calon peminat di kampus Unand.',
+              description:
+                  'Foto fisik asli dan deskripsi yang transparan meningkatkan kepercayaan calon peminat di kampus Unand.',
               stepNumber: 1,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -393,8 +394,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
                               groupValue: _selectedCondition,
                               activeColor: AppColors.primary,
                               onChanged: (val) {
-                                if (val != null)
+                                if (val != null) {
                                   setState(() => _selectedCondition = val);
+                                }
                               },
                             ),
                             Expanded(
@@ -430,7 +432,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
                   AppTextField(
                     controller: _descController,
                     label: 'Deskripsi Transparan *',
-                    hintText: 'Jelaskan riwayat pemakaian, kelengkapan, dan cacat/goresan bila ada…',
+                    hintText:
+                        'Jelaskan riwayat pemakaian, kelengkapan, dan cacat/goresan bila ada…',
                     maxLines: 5,
                     maxLength: 1000,
                     showCounter: true,

@@ -342,12 +342,12 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   },
                 ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildLocationRow(String title, String subtitle) {
     return Row(
