@@ -12,6 +12,9 @@ class ItemModel {
   final List<String> photoUrls;
   final String status; // Available, Reserved, Completed, Archived
 
+  /// Waktu terakhir listing dibuat/disunting (FR-05: dasar Stale Alert 14 hari).
+  final DateTime? lastListingUpdateAt;
+
   ItemModel({
     required this.id,
     required this.ownerId,
@@ -25,6 +28,7 @@ class ItemModel {
     required this.condition,
     required this.photoUrls,
     required this.status,
+    this.lastListingUpdateAt,
   });
 
   factory ItemModel.fromJson(Map<String, dynamic> json) {
@@ -43,6 +47,9 @@ class ItemModel {
       condition: json['kondisi'] ?? '',
       photoUrls: List<String>.from(json['url_foto'] ?? []),
       status: json['status'] ?? 'Available',
+      lastListingUpdateAt: DateTime.tryParse(
+        '${json['last_listing_update_at'] ?? json['updated_at'] ?? ''}',
+      )?.toLocal(),
     );
   }
 }

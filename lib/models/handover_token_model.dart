@@ -43,25 +43,27 @@ class HandoverTokenModel {
   }
 
   double get progressRatio {
-    const totalDurationSeconds = 300.0; // 5 menit = 300 detik
+    const totalDurationSeconds = 300.0; // 5 menit = 300 detik (FR-17)
     final remaining = remainingSeconds.toDouble();
     return (remaining / totalDurationSeconds).clamp(0.0, 1.0);
   }
 
   factory HandoverTokenModel.fromJson(Map<String, dynamic> json) {
     return HandoverTokenModel(
-      tokenId: json['token_id'] ?? json['id'] ?? '',
-      meetupId: json['meetup_id'] ?? '',
-      token: json['token'] ?? '',
+      tokenId: (json['token_id'] ?? json['id'] ?? '').toString(),
+      meetupId: (json['meetup_id'] ?? '').toString(),
+      token: (json['token'] ?? '').toString(),
       issuedAt: json['issued_at'] != null
-          ? DateTime.parse(json['issued_at'])
+          ? DateTime.parse(json['issued_at'].toString())
           : DateTime.now(),
       expiresAt: json['expires_at'] != null
-          ? DateTime.parse(json['expires_at'])
+          ? DateTime.parse(json['expires_at'].toString())
           : DateTime.now().add(const Duration(minutes: 5)),
-      usedAt: json['used_at'] != null ? DateTime.parse(json['used_at']) : null,
-      status: json['status'] ?? 'active',
-      proofNumber: json['proof_number'],
+      usedAt: json['used_at'] != null
+          ? DateTime.parse(json['used_at'].toString())
+          : null,
+      status: (json['status'] ?? 'active').toString(),
+      proofNumber: json['proof_number']?.toString(),
     );
   }
 

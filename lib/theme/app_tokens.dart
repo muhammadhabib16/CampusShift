@@ -20,6 +20,8 @@ abstract final class AppColors {
 
   static const Color error = Color(0xFFDC2626);
   static const Color errorContainer = Color(0xFFFEE2E2);
+  static const Color warning = Color(0xFFD97706);
+  static const Color warningContainer = Color(0xFFFEF3C7);
   static const Color success = Color(0xFF15803D);
   static const Color successContainer = Color(0xFFDCFCE7);
 }

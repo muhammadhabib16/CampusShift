@@ -2,22 +2,27 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../../core/app_strings.dart';
 import '../../models/handover_token_model.dart';
-import '../../services/handover_service.dart';
-import '../../shared/widgets/shared_widgets.dart';
+import '../../models/meetup.dart';
+import '../../services/meetup_repository.dart';
+import '../../shared/widgets/dialogs.dart';
+import '../../viewmodels/handover_view_model.dart';
+import 'review_form_screen.dart';
+import 'riwayat_transaksi_screen.dart';
+import '../../shared/widgets/user_link.dart';
 import '../../theme/app_tokens.dart';
 
-/// Layar Serah Terima QR & Bukti Digital (Modul 4: Fadel).
-/// Mengimplementasikan alur FR-17 (QR Token sekali pakai 5 menit),
-/// BR-21 (polling status 3s), pembatalan sesi, bukti serah terima tiket,
-/// dan form ulasan reputasi FR-20.
+/// FR-17 [W]: Pemilik Barang dapat mengelola sesi QR serah terima pada pertemuan berstatus Dikonfirmasi.
+/// 1. Create: Menampilkan QR; server membuat token acak sekali pakai yang berlaku 5 menit dan diperbarui otomatis saat kedaluwarsa.
+/// 2. Delete: Membatalkan sesi QR yang sedang aktif; token dihapus dari server sehingga QR langsung tidak berlaku (BR-21).
 class SerahTerimaQrScreen extends StatefulWidget {
+  final Meetup? meetup;
   final MeetupDetailModel? meetupDetail;
 
-  const SerahTerimaQrScreen({super.key, this.meetupDetail});
+  const SerahTerimaQrScreen({super.key, this.meetup, this.meetupDetail});
 
   @override
   State<SerahTerimaQrScreen> createState() => _SerahTerimaQrScreenState();
@@ -25,15 +30,10 @@ class SerahTerimaQrScreen extends StatefulWidget {
 
 class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
     with SingleTickerProviderStateMixin {
-  late MeetupDetailModel _meetup;
-  HandoverTokenModel? _tokenModel;
-  bool _isLoading = true;
-  String _sessionState = 'active'; // 'active', 'expired', 'used', 'cancelled'
-
+  late Meetup _meetup;
+  bool _hasRealMeetup = false;
   Timer? _countdownTimer;
-  Timer? _statusCheckTimer;
-  int _currentScenarioTab =
-      0; // 0: Aktif (3s), 1: Kedaluwarsa, 2: Sukses Selesai
+  Timer? _pollingTimer;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -41,510 +41,612 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
   @override
   void initState() {
     super.initState();
-    _meetup = widget.meetupDetail ?? MeetupDetailModel.sample();
+
+    // Mengambil meetup dari parameter atau mencari meetup berstatus Dikonfirmasi di MeetupRepository
+    final repo = MeetupRepository();
+    repo.ensureInitialized();
+    // FR-17: hanya pemilik barang yang menampilkan QR.
+    final confirmed = repo
+        .getAllMeetups()
+        .where(
+          (m) =>
+              m.isDikonfirmasi &&
+              (!repo.isOnlineMode ||
+                  m.ownerId == MeetupRepository.currentUserId),
+        )
+        .toList();
+
+    Meetup? fromDetail;
+    if (widget.meetup == null && widget.meetupDetail != null) {
+      final parsedId = int.tryParse(widget.meetupDetail!.meetupId);
+      if (parsedId != null) {
+        fromDetail = repo.getMeetupById(parsedId);
+      }
+    }
+
+    _hasRealMeetup =
+        widget.meetup != null || fromDetail != null || confirmed.isNotEmpty;
+    _meetup =
+        widget.meetup ??
+        fromDetail ??
+        (confirmed.isNotEmpty
+            ? confirmed.first
+            : Meetup(
+                id: 101,
+                itemId: 1,
+                itemTitle: 'Buku Kalkulus Purcell Edisi 9',
+                itemCategory: 'Buku Kuliah',
+                itemPrice: 'Rp 85.000',
+                itemType: 'Jual',
+                requesterId: 1,
+                requesterName: 'Bayu Mutawakkil',
+                requesterNim: '2411522023',
+                ownerId: 3,
+                ownerName: 'Fadel Muhammad',
+                ownerNim: '2411522029',
+                safeMeetPoint: repo.getSafeMeetPoints().first,
+                scheduledTime: DateTime.now().add(const Duration(hours: 2)),
+                status: 'Dikonfirmasi',
+                createdAt: DateTime.now().subtract(const Duration(days: 1)),
+              ));
 
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+    _pulseAnimation = Tween<double>(begin: 0.85, end: 1.15).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _initSession();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initSession();
+    });
   }
 
   @override
   void dispose() {
     _countdownTimer?.cancel();
-    _statusCheckTimer?.cancel();
+    _pollingTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
 
-  /// Inisialisasi atau load sesi QR (FR-17 Point 1: Create)
+  /// Inisialisasi pembuatan sesi QR (FR-17.1)
   Future<void> _initSession() async {
-    setState(() => _isLoading = true);
-    final result = await HandoverService.createQrSession(
-      meetupId: _meetup.meetupId,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final token = result['token'] as HandoverTokenModel;
-      setState(() {
-        _tokenModel = token;
-        _sessionState = 'active';
-        _isLoading = false;
-        _currentScenarioTab = 0;
-      });
-      _startTimers();
-    } else {
-      setState(() => _isLoading = false);
+    // Mode server: pertemuan contoh tidak ada di backend, jadi jangan
+    // membuat sesi QR untuknya.
+    if (MeetupRepository().isOnlineMode &&
+        (!_hasRealMeetup ||
+            _meetup.ownerId != MeetupRepository.currentUserId)) {
       AppSnackBar.showError(
         context,
-        result['message'] ?? 'Gagal membuat sesi QR',
+        _hasRealMeetup
+            ? 'QR serah terima hanya dapat ditampilkan oleh pemilik barang.'
+            : 'Belum ada pertemuan Dikonfirmasi untuk barang milikmu.',
       );
+      Navigator.of(context).pop();
+      return;
     }
+    final vm = context.read<HandoverViewModel>();
+    await vm.createQrSession(_meetup.id);
+    _startTimers();
   }
 
-  /// Mulai countdown timer per detik dan polling status per 3 detik (FR-21 / BR-21)
   void _startTimers() {
     _countdownTimer?.cancel();
-    _statusCheckTimer?.cancel();
+    _pollingTimer?.cancel();
 
-    // Timer per detik untuk update visual countdown dan auto-refresh bila kedaluwarsa
+    // 1. Timer Countdown per detik (FR-17.1)
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted || _tokenModel == null) return;
+      if (!mounted) return;
+      final vm = context.read<HandoverViewModel>();
+      final token = vm.activeToken;
 
-      if (_tokenModel!.isExpired) {
+      if (token == null) return;
+
+      if (token.isExpired) {
         timer.cancel();
         _onTokenExpired();
       } else {
-        setState(() {}); // re-render countdown & progress bar
+        setState(() {}); // Re-render countdown text & progress
       }
     });
 
-    // Polling status setiap 3 detik sesuai FR-21 / BR-21
-    _statusCheckTimer = Timer.periodic(const Duration(seconds: 3), (
-      timer,
-    ) async {
-      if (!mounted || _tokenModel == null || _sessionState != 'active') return;
+    // 2. Polling per 3 detik untuk deteksi otomatis pemindaian mitra (FR-21)
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (!mounted) return;
+      final vm = context.read<HandoverViewModel>();
+      if (vm.activeToken == null || vm.activeToken!.status != 'active') return;
 
-      final statusRes = await HandoverService.checkTokenStatus(
-        meetupId: _meetup.meetupId,
-        tokenId: _tokenModel!.tokenId,
-      );
+      await vm.checkTokenStatus(_meetup.id);
 
       if (!mounted) return;
+      if (vm.handoverSuccess) {
+        timer.cancel();
+        _countdownTimer?.cancel();
+        _showSuccessDialog();
+      }
+    });
+  }
 
-      final newStatus = statusRes['status'] ?? 'active';
-      if (newStatus == 'used' && _sessionState != 'used') {
-        _onHandoverSuccess(
-          statusRes['proof_number'] ?? _tokenModel?.proofNumber,
-        );
-      } else if (newStatus == 'expired' && _sessionState != 'expired') {
-        _onTokenExpired();
-      } else if (newStatus == 'cancelled' && _sessionState != 'cancelled') {
-        setState(() {
-          _sessionState = 'cancelled';
+  /// FR-17.1: QR diperbarui otomatis saat kedaluwarsa (5 menit)
+  void _onTokenExpired() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Masa berlaku QR 5 menit telah habis. Memperbarui otomatis...',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.orange.shade800,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        final vm = context.read<HandoverViewModel>();
+        vm.createQrSession(_meetup.id).then((_) {
+          if (mounted) _startTimers();
         });
       }
     });
   }
 
-  /// Handler saat token kedaluwarsa (FR-17)
-  void _onTokenExpired() {
-    setState(() {
-      _sessionState = 'expired';
-      _currentScenarioTab = 1;
-    });
+  /// FR-17.2: Delete / Batalkan Sesi QR yang Sedang Aktif
+  Future<void> _handleCancelSession() async {
+    final vm = context.read<HandoverViewModel>();
+    final token = vm.activeToken;
+    if (token == null) return;
 
-    AppSnackBar.showInfo(
-      context,
-      'Masa berlaku QR 5 menit telah habis. Memperbarui otomatis...',
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red.shade700,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Batalkan Sesi QR?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Kode QR yang sedang aktif akan langsung tidak berlaku. Status pertemuan tetap Dikonfirmasi dan Anda dapat membuat sesi baru kapan saja.',
+          style: TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Kembali', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ya, Batalkan Sesi'),
+          ),
+        ],
+      ),
     );
 
-    // Auto refresh setelah 2 detik agar pengguna melihat transisinya
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted && _sessionState == 'expired') {
-        _refreshQrToken(isAuto: true);
-      }
-    });
-  }
-
-  /// Perbarui token QR (Create token baru, menonaktifkan token lama sesuai BR-21)
-  Future<void> _refreshQrToken({bool isAuto = false}) async {
-    setState(() => _isLoading = true);
-    final result = await HandoverService.createQrSession(
-      meetupId: _meetup.meetupId,
-    );
-
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final token = result['token'] as HandoverTokenModel;
-      setState(() {
-        _tokenModel = token;
-        _sessionState = 'active';
-        _isLoading = false;
-        _currentScenarioTab = 0;
-      });
-      _startTimers();
-
-      AppSnackBar.showSuccess(
-        context,
-        isAuto
-            ? 'QR diperbarui otomatis dengan token baru'
-            : 'QR berhasil diperbarui (Token baru dibuat)',
-      );
-    } else {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  /// FR-17 Point 2: Batalkan Sesi QR dengan ConfirmDialog
-  Future<void> _confirmCancelSession() async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Batalkan Sesi QR?',
-      message: 'Token aktif akan dihapus dari server sehingga kode QR tidak berlaku lagi. Status pertemuan tetap Dikonfirmasi dan Anda dapat membuat sesi baru kapan saja.',
-      confirmLabel: 'Ya, Batalkan Sesi',
-      cancelLabel: AppStrings.cancel,
-      destructive: true,
-      confirmIcon: Icons.cancel_outlined,
-    );
-
-    if (confirmed == true && mounted) {
-      setState(() => _isLoading = true);
+    if (confirm == true && mounted) {
       _countdownTimer?.cancel();
-      _statusCheckTimer?.cancel();
-
-      final res = await HandoverService.cancelQrSession(
-        meetupId: _meetup.meetupId,
-        tokenId: _tokenModel?.tokenId ?? '',
-      );
-
+      _pollingTimer?.cancel();
+      final success = await vm.cancelQrSession(_meetup.id, token.tokenId);
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-        _sessionState = 'cancelled';
-      });
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Sesi QR dibatalkan. Kode QR sudah tidak berlaku.',
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 
+  /// Dialog Sukses Serah Terima (FR-21)
+  void _showSuccessDialog() {
+    final vm = context.read<HandoverViewModel>();
+    final proof = vm.lastCompletedProof;
+
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFD1FAE5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.primary,
+                size: 40,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Serah Terima Berhasil! 🎉',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Barang "${_meetup.itemTitle}" telah resmi diterima oleh ${_meetup.requesterName}.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDFA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primaryContainer),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Nomor Bukti Digital:',
+                          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                        Text(
+                          proof?.proofNumber ??
+                              vm.activeToken?.proofNumber ??
+                              'PRF-202610-8942',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  // Buka layar review untuk peminat (FR-20)
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReviewFormScreen(
+                        meetupId: _meetup.id,
+                        proofNumber: proof?.proofNumber ?? 'PRF-202610-8942',
+                        targetUserId: _meetup.requesterId,
+                        targetUserName: _meetup.requesterName,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.star_rounded, color: Colors.white),
+                label: const Text(
+                  'Beri Ulasan Mitra',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RiwayatTransaksiScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Lihat Riwayat & Bukti'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Sheet Pengujian UAT & Demonstrasi (UAT-07 & UAT-08)
+  void _openTestingModal() {
+    // Token mode server dibuat & diverifikasi backend; simulasi lokal tidak
+    // berlaku. Gunakan HP kedua (Peminat) untuk memindai QR.
+    if (MeetupRepository().isOnlineMode) {
       AppSnackBar.showInfo(
         context,
-        res['message'] ?? 'Sesi QR berhasil dibatalkan',
+        'Simulasi hanya tersedia di mode demo. Minta peminat memindai QR ini.',
       );
+      return;
     }
-  }
-
-  /// Handler serah terima sukses (FR-21)
-  void _onHandoverSuccess(String? proofNumber) {
-    _countdownTimer?.cancel();
-    _statusCheckTimer?.cancel();
-
-    setState(() {
-      _sessionState = 'used';
-      _currentScenarioTab = 2;
-    });
-
-    _showSuccessBottomSheet(proofNumber ?? 'PRF-202610-8942');
-  }
-
-  /// Switcher Simulasi Skenario Handover (BR-19 • BR-20 • BR-21)
-  void _switchScenario(int index) {
-    if (_isLoading) return;
-    setState(() => _currentScenarioTab = index);
-
-    if (index == 0) {
-      if (_sessionState != 'active') {
-        _refreshQrToken();
-      }
-    } else if (index == 1) {
-      HandoverService.simulateExpired(_meetup.meetupId);
-      _countdownTimer?.cancel();
-      setState(() => _sessionState = 'expired');
-    } else if (index == 2) {
-      HandoverService.simulateScanSuccess(_meetup.meetupId);
-      _onHandoverSuccess(_tokenModel?.proofNumber);
-    }
-  }
-
-  /// Salin token ke clipboard
-  void _copyTokenToClipboard() {
-    if (_tokenModel == null) return;
-    Clipboard.setData(ClipboardData(text: _tokenModel!.token));
-    AppSnackBar.showSuccess(
-      context,
-      'Token "${_tokenModel!.token}" disalin ke papan klip',
+    final vm = context.read<HandoverViewModel>();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.science_rounded, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text(
+                  'Mode Pengujian UAT (Dosen / Tim)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Gunakan tombol di bawah untuk menguji skenario edge cases tanpa memerlukan 2 HP:',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.timer_off_rounded,
+                color: Colors.orange,
+              ),
+              title: const Text('Simulasi Token Kedaluwarsa'),
+              subtitle: const Text(
+                'Membuat token lewat 5 menit untuk menguji penolakan & auto-refresh',
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                vm.simulateExpired(_meetup.id);
+                _onTokenExpired();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(
+                Icons.qr_code_scanner_rounded,
+                color: AppColors.primary,
+              ),
+              title: const Text('Simulasi Peminat Berhasil Scan'),
+              subtitle: const Text(
+                'Menyelesaikan serah terima otomatis dalam 3 detik',
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                vm.simulateScanSuccess(_meetup.id);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final vm = context.watch<HandoverViewModel>();
+    final token = vm.activeToken;
+    final isCancelled = token?.status == 'cancelled';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Serah Terima QR'),
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 1,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back,
+            color: AppColors.textPrimary,
+            size: 22,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Serah Terima QR',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline_rounded),
-            onPressed: _showHelpDialog,
-            tooltip: 'Panduan Serah Terima QR',
+            tooltip: 'Mode Pengujian UAT',
+            icon: const Icon(Icons.science_outlined, color: AppColors.primary),
+            onPressed: _openTestingModal,
           ),
-          const SizedBox(width: AppSpacing.xs),
         ],
       ),
-      body: _isLoading
-          ? const LoadingState(label: 'Menyiapkan sesi QR terenkripsi...')
+      body: vm.isLoading && token == null
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.md,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // SIMULASI SKENARIO HANDOVER (Header Banner)
-                  _buildSimulationBanner(),
-                  const SizedBox(height: AppSpacing.md),
+                  // 1. KARTU TITIK TEMU KAMPUS RESMI
+                  _buildSafeMeetPointCard(),
+                  const SizedBox(height: 14),
 
-                  // TITIK TEMU KAMPUS TERVERIFIKASI
-                  _buildMeetingPointCard(),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // ITEM & PARTNER CARD
+                  // 2. KARTU BARANG & MITRA PEMINAT
                   _buildItemAndPartnerCard(),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: 14),
 
-                  // QR CODE & HANDOVER SESSION CARD (CORE FR-17)
-                  _buildQrSessionCard(),
-                  const SizedBox(height: AppSpacing.lg),
+                  // 3. KARTU SESI QR UTAMA (CORE FR-17)
+                  _buildQrSessionCard(token, isCancelled),
+                  const SizedBox(height: 16),
 
-                  // PROTOKOL SERAH TERIMA AMAN
+                  // 4. PROTOKOL SERAH TERIMA AMAN MAHASISWA
                   _buildSafetyProtocolCard(),
-                  const SizedBox(height: AppSpacing.xxl),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
     );
   }
 
-  /// Banner Simulasi Skenario Handover (BR-19 • BR-20 • BR-21)
-  Widget _buildSimulationBanner() {
+  Widget _buildSafeMeetPointCard() {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: AppRadius.medium,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.outline),
-      ),
-      child: Column(
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.tune_rounded, color: AppColors.primary, size: 16),
-              SizedBox(width: AppSpacing.xs),
-              Text(
-                'SIMULASI SKENARIO SERAH TERIMA',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              Spacer(),
-              Text(
-                'BR-19 • BR-20 • BR-21',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _buildScenarioPill(
-                  index: 0,
-                  label: '1. Aktif (3s)',
-                  isSelected: _currentScenarioTab == 0,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: _buildScenarioPill(
-                  index: 1,
-                  label: '2. Kedaluwarsa',
-                  isSelected: _currentScenarioTab == 1,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: _buildScenarioPill(
-                  index: 2,
-                  label: '3. Sukses',
-                  isSelected: _currentScenarioTab == 2,
-                ),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildScenarioPill({
-    required int index,
-    required String label,
-    required bool isSelected,
-  }) {
-    return GestureDetector(
-      onTap: () => _switchScenario(index),
-      child: AnimatedContainer(
-        duration: AppDurations.quick,
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surface,
-          borderRadius: AppRadius.small,
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.outline,
-          ),
-          boxShadow: isSelected ? AppElevation.softShadow : null,
-        ),
-        child: Center(
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-              color: isSelected ? AppColors.onPrimary : AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Card 1: Titik Temu Kampus Terverifikasi
-  Widget _buildMeetingPointCard() {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  borderRadius: AppRadius.small,
-                ),
-                child: const Icon(
-                  Icons.videocam_outlined,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.verified_user_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'TITIK TEMU TERVERIFIKASI',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        const StatusBadge(status: 'Dikonfirmasi'),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      _meetup.locationTitle,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                    const Text(
+                      'TITIK TEMU RESMI UNAND',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                        letterSpacing: 0.8,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.verified_user_outlined,
-                          color: AppColors.primary,
-                          size: 14,
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1FAE5),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'CCTV Siaga',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF065F46),
                         ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Expanded(
-                          child: Text(
-                            _meetup.locationSub,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: AppRadius.small,
-              border: Border.all(color: AppColors.outline),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.access_time_rounded,
-                  color: AppColors.primary,
-                  size: 16,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                const Text(
-                  'Jadwal:',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
+                const SizedBox(height: 4),
                 Text(
-                  '${_meetup.scheduledDate}, ${_meetup.scheduledTime}',
+                  _meetup.safeMeetPoint.name,
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: 2,
+                const SizedBox(height: 2),
+                Text(
+                  _meetup.safeMeetPoint.description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: AppRadius.pill,
-                  ),
-                  child: const Text(
-                    'Tepat Waktu',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.onPrimaryContainer,
-                    ),
-                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -554,95 +656,51 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
     );
   }
 
-  /// Card 2: Informasi Barang & Profil Pembeli
   Widget _buildItemAndPartnerCard() {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outline),
+      ),
       child: Column(
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: AppColors.surfaceVariant,
-                  borderRadius: AppRadius.medium,
-                  border: Border.all(color: AppColors.outline),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons.inventory_2_outlined,
-                    color: AppColors.primary,
-                    size: 30,
-                  ),
+                child: const Icon(
+                  Icons.inventory_2_outlined,
+                  color: AppColors.primary,
+                  size: 26,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryContainer,
-                            borderRadius: AppRadius.small,
-                          ),
-                          child: Text(
-                            _meetup.itemCategory,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEDE9FE),
-                            borderRadius: AppRadius.small,
-                          ),
-                          child: Text(
-                            _meetup.itemGrade,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF6D28D9),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
                     Text(
-                      _meetup.itemName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      _meetup.itemTitle,
                       style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: 2),
                     Text(
-                      _meetup.itemPrice,
+                      '${_meetup.itemCategory} • ${_meetup.itemPrice}',
                       style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
                         color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -650,24 +708,50 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
               ),
             ],
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-            child: Divider(color: AppColors.outline),
-          ),
+          const Divider(height: 20),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: AvatarWithName(
-                  name: _meetup.partnerName,
-                  subtitle:
-                      'NIM: ${_meetup.partnerNim} • ${_meetup.partnerFaculty}',
-                  radius: 20,
-                ),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: AppColors.primary
+                        .withValues(alpha: 0.1),
+                    child: const Icon(
+                      Icons.person,
+                      color: AppColors.primary,
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  UserLink(
+                    userId: _meetup.requesterId,
+                    name: _meetup.requesterName,
+                    prefix: 'Peminat: ',
+                    suffix: ' (${_meetup.requesterNim})',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF334155),
+                    ),
+                  ),
+                ],
               ),
-              RatingStars(
-                rating: _meetup.partnerRating,
-                reviewCount: _meetup.partnerCompletedDeals,
-                size: 14,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.warningContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _meetup.itemType,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFB45309),
+                  ),
+                ),
               ),
             ],
           ),
@@ -676,805 +760,277 @@ class _SerahTerimaQrScreenState extends State<SerahTerimaQrScreen>
     );
   }
 
-  /// Card 3: QR Code Section (FR-17 Core Component)
-  Widget _buildQrSessionCard() {
-    final token = _tokenModel;
-
-    // Jika sesi dibatalkan
-    if (_sessionState == 'cancelled' || token == null) {
-      return AppCard(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+  Widget _buildQrSessionCard(HandoverTokenModel? token, bool isCancelled) {
+    if (isCancelled) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.red.shade200),
+        ),
         child: Column(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFEE2E2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.cancel_outlined,
-                color: AppColors.error,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
+            Icon(Icons.cancel_outlined, color: Colors.red.shade600, size: 54),
+            const SizedBox(height: 12),
             const Text(
               'Sesi QR Telah Dibatalkan',
               style: TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
               ),
             ),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 6),
             const Text(
-              'Token telah dinonaktifkan dari server (FR-17). Status pertemuan tetap Dikonfirmasi dan Anda dapat membuat sesi baru.',
+              'Kode QR sudah tidak berlaku. Pertemuan tetap Dikonfirmasi. Tekan tombol di bawah untuk membuat sesi QR baru.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                height: 1.4,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            AppPrimaryButton(
-              label: 'Buat Sesi QR Baru',
-              icon: Icons.qr_code_2_rounded,
-              onPressed: () => _refreshQrToken(),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _initSession,
+              icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+              label: const Text(
+                'Buat Sesi QR Baru',
+                style: TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
             ),
           ],
         ),
       );
     }
 
-    // Jika sesi sudah berhasil divalidasi
-    if (_sessionState == 'used') {
-      return _buildSuccessCard(token);
-    }
+    final remainingSec = token?.remainingSeconds ?? 300;
+    final mins = (remainingSec ~/ 60).toString().padLeft(2, '0');
+    final secs = (remainingSec % 60).toString().padLeft(2, '0');
+    final progress = token?.progressRatio ?? 1.0;
 
-    final isExpired = _sessionState == 'expired' || token.isExpired;
-
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.outline),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          // Header Status & Polling 3s
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: isExpired ? AppColors.accent : AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+              ScaleTransition(
+                scale: _pulseAnimation,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    isExpired
-                        ? '• QR Kedaluwarsa'
-                        : '• Menunggu Peminat Memindai QR',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isExpired ? AppColors.accent : AppColors.primary,
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const Row(
-                children: [
-                  Icon(
-                    Icons.sync_rounded,
-                    color: AppColors.textSecondary,
-                    size: 14,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Cek tiap 3s',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              const Text(
+                'SESI QR AKTIF (SATU KALI PAKAI)',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                  letterSpacing: 0.6,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
 
-          // Countdown Pill
+          // Tampilan QR Code
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.xs,
-            ),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isExpired
-                  ? const Color(0xFFFEF3C7)
-                  : AppColors.primaryContainer,
-              borderRadius: AppRadius.pill,
-              border: Border.all(
-                color: isExpired ? const Color(0xFFFDE68A) : AppColors.outline,
-              ),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.outline, width: 1.5),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.timer_outlined,
-                  size: 15,
-                  color: isExpired
-                      ? const Color(0xFFB45309)
-                      : AppColors.onPrimaryContainer,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Text(
-                  isExpired
-                      ? 'Kedaluwarsa (Memperbarui otomatis...)'
-                      : 'Kedaluwarsa dalam: ${token.formattedRemainingTime}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isExpired
-                        ? const Color(0xFFB45309)
-                        : AppColors.onPrimaryContainer,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // QR Code Frame dengan border primary
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: AppRadius.large,
-                  border: Border.all(
-                    color: isExpired ? AppColors.outline : AppColors.primary,
-                    width: 2,
-                  ),
-                  boxShadow: AppElevation.softShadow,
-                ),
-                child: Opacity(
-                  opacity: isExpired ? 0.2 : 1.0,
-                  child: QrImageView(
-                    data: token.token,
+            child: token != null
+                ? QrImageView(
+                    data: '${token.token}|${_meetup.id}',
                     version: QrVersions.auto,
-                    size: 190.0,
+                    size: 210,
                     eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
-                      color: AppColors.textPrimary,
+                      color: AppColors.primary,
                     ),
                     dataModuleStyle: const QrDataModuleStyle(
                       dataModuleShape: QrDataModuleShape.square,
                       color: AppColors.textPrimary,
                     ),
+                  )
+                : const SizedBox(
+                    height: 210,
+                    child: Center(child: CircularProgressIndicator()),
                   ),
-                ),
-              ),
+          ),
+          const SizedBox(height: 16),
 
-              // Expired Overlay
-              if (isExpired)
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.textPrimary.withValues(alpha: 0.85),
-                    borderRadius: AppRadius.medium,
+          // Token Text & Salin
+          InkWell(
+            onTap: () {
+              if (token != null) {
+                Clipboard.setData(ClipboardData(text: token.token));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Token "${token.token}" disalin!'),
+                    backgroundColor: AppColors.primary,
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.timer_off_outlined,
-                        color: AppColors.onPrimary,
-                        size: 32,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      const Text(
-                        'QR Kedaluwarsa',
-                        style: TextStyle(
-                          color: AppColors.onPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Token habis masa berlaku 5 menit',
-                        style: TextStyle(color: Colors.white70, fontSize: 11),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      ElevatedButton.icon(
-                        onPressed: () => _refreshQrToken(),
-                        icon: const Icon(Icons.refresh_rounded, size: 16),
-                        label: const Text('Perbarui Sekarang'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.onPrimary,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.xs,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Token Nonce Sekali Pakai
-          const Text(
-            'TOKEN OTENTIKASI SEKALI PAKAI (ONE-TIME NONCE)',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textSecondary,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer,
-              borderRadius: AppRadius.small,
-              border: Border.all(color: AppColors.outline),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.vpn_key_outlined,
-                  size: 15,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  token.token,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.0,
-                    color: AppColors.onPrimaryContainer,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Linear Progress Bar
-          ClipRRect(
-            borderRadius: AppRadius.pill,
-            child: LinearProgressIndicator(
-              value: token.progressRatio,
-              minHeight: 6,
-              backgroundColor: AppColors.outline,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                isExpired ? AppColors.accent : AppColors.primary,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          Text(
-            'Tunjukkan layar ini kepada ${_meetup.partnerName} untuk dipindai saat bertemu di Safe-Meet Point.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Action Buttons: Perbarui & Salin
-          Row(
-            children: [
-              Expanded(
-                child: AppSecondaryButton(
-                  label: 'Perbarui QR',
-                  icon: Icons.refresh_rounded,
-                  onPressed: () => _refreshQrToken(),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Container(
-                height: 52,
-                width: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: AppRadius.medium,
-                  border: Border.all(color: AppColors.outline),
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.copy_rounded,
-                    color: AppColors.primary,
-                  ),
-                  onPressed: _copyTokenToClipboard,
-                  tooltip: 'Salin Token',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Tombol Batalkan Sesi QR
-          AppSecondaryButton(
-            label: 'Batalkan Sesi QR',
-            icon: Icons.cancel_outlined,
-            isDestructive: true,
-            onPressed: _confirmCancelSession,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Card saat transaksi serah terima berhasil (Gaya Tiket Digital)
-  Widget _buildSuccessCard(HandoverTokenModel token) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.large,
-        border: Border.all(color: AppColors.outline),
-        boxShadow: AppElevation.softShadow,
-      ),
-      child: Column(
-        children: [
-          // Header Tiket
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: const BoxDecoration(
-              color: AppColors.primaryContainer,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(AppRadius.largeValue),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.verified_rounded,
-                  color: AppColors.primary,
-                  size: 28,
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'BUKTI SERAH TERIMA DIGITAL',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.onPrimaryContainer,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      Text(
-                        token.proofNumber ?? 'PRF-202610-8942',
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.copy_rounded,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
-                  onPressed: () {
-                    final proof = token.proofNumber ?? 'PRF-202610-8942';
-                    Clipboard.setData(ClipboardData(text: proof));
-                    AppSnackBar.showSuccess(
-                      context,
-                      'Nomor bukti $proof disalin ke papan klip',
-                    );
-                  },
-                  tooltip: 'Salin Nomor Bukti',
-                ),
-              ],
-            ),
-          ),
-
-          // Garis Putus-Putus Perforasi Tiket
-          Row(
-            children: List.generate(
-              30,
-              (index) => Expanded(
-                child: Container(
-                  height: 2,
-                  color: index.isEven ? AppColors.outline : Colors.transparent,
-                ),
-              ),
-            ),
-          ),
-
-          // Isi Tiket
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFDCFCE7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle_rounded,
-                    color: AppColors.success,
-                    size: 38,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Serah Terima Berhasil!',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'QR telah divalidasi oleh ${_meetup.partnerName}. Transaksi dinyatakan Selesai sesuai BR-24.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppPrimaryButton(
-                  label: 'Beri Ulasan untuk ${_meetup.partnerName}',
-                  icon: Icons.star_rounded,
-                  onPressed: () => _showReviewBottomSheet(_meetup.partnerName),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Card 4: Protokol Serah Terima Aman
-  Widget _buildSafetyProtocolCard() {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.shield_outlined, color: AppColors.primary, size: 20),
-              SizedBox(width: AppSpacing.sm),
-              Text(
-                'Protokol Serah Terima Aman',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _buildProtocolStep(
-            number: '1',
-            title: 'Inspeksi Kondisi Fisik',
-            description: 'Persilakan peminat memeriksa kelengkapan barang sebelum kode QR dipindai.',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildProtocolStep(
-            number: '2',
-            title: 'Terima Pembayaran / Barang Barter',
-            description: 'Pastikan Anda telah memegang uang pas atau barang tukar sebelum scan QR.',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _buildProtocolStep(
-            number: '3',
-            title: 'Verifikasi Instan',
-            description: 'Setelah dipindai, status otomatis Selesai dan tidak dapat dibatalkan sepihak (BR-20).',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProtocolStep({
-    required String number,
-    required String title,
-    required String description,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          decoration: const BoxDecoration(
-            color: AppColors.primaryContainer,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              number,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textPrimary,
-                height: 1.35,
-              ),
-              children: [
-                TextSpan(
-                  text: '$title: ',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                TextSpan(
-                  text: description,
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Bottom sheet dialog serah terima berhasil
-  void _showSuccessBottomSheet(String proofNumber) {
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.largeValue),
-        ),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: const BoxDecoration(
-                color: Color(0xFFDCFCE7),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: AppColors.success,
-                size: 36,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            const Text(
-              'Serah Terima Berhasil!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Barang "${_meetup.itemName}" telah sah diserahkan ke ${_meetup.partnerName}.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+                );
+              }
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.surfaceVariant,
-                borderRadius: AppRadius.small,
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                'No. Bukti: $proofNumber',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            AppPrimaryButton(
-              label: 'Tutup',
-              onPressed: () => Navigator.pop(ctx),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Form Ulasan & Reputasi (FR-20)
-  void _showReviewBottomSheet(String partnerName) {
-    double selectedRating = 5.0;
-    final reviewController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.largeValue),
-        ),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Padding(
-            padding: EdgeInsets.only(
-              left: AppSpacing.xl,
-              right: AppSpacing.xl,
-              top: AppSpacing.xl,
-              bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Ulas $partnerName',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    token?.token ?? 'TKN-CS-XXXX-XX',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                      color: AppColors.textPrimary,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Beri nilai untuk membangun rasa percaya di komunitas CampuShift.',
-                  style: TextStyle(
-                    fontSize: 12,
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.copy_rounded,
+                    size: 16,
                     color: AppColors.textSecondary,
                   ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Center(
-                  child: RatingStars(
-                    rating: selectedRating,
-                    interactive: true,
-                    size: 36,
-                    onRatingChanged: (newRating) {
-                      setModalState(() => selectedRating = newRating);
-                    },
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppTextField(
-                  label: 'Ulasan Transaksi',
-                  hintText:
-                      'Tuliskan pengalaman bertransaksi dengan rekan ini...',
-                  controller: reviewController,
-                  maxLines: 3,
-                  maxLength: 500,
-                  showCounter: true,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AppPrimaryButton(
-                  label: 'Kirim Ulasan',
-                  icon: Icons.send_rounded,
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    AppSnackBar.showSuccess(
-                      this.context,
-                      'Ulasan berhasil dikirim. Terima kasih telah menjaga keamanan kampus!',
-                    );
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  /// Dialog Panduan & Aturan Bisnis Serah Terima (BR-21, BR-22, FR-17)
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.large),
-        title: const Row(
-          children: [
-            Icon(Icons.info_outline_rounded, color: AppColors.primary),
-            SizedBox(width: AppSpacing.sm),
-            Text(
-              'Aturan Serah Terima QR',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'FR-17 & BR-21 Aturan Token QR:',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ],
               ),
-              SizedBox(height: AppSpacing.xs),
-              Text(
-                '• Token berlaku 5 menit (sekali pakai).\n'
-                '• Hanya ada 1 token aktif per pertemuan.\n'
-                '• Meminta token baru menonaktifkan token sebelumnya.\n'
-                '• Membatalkan sesi menghapus token aktif tanpa mengubah status pertemuan.\n'
-                '• Layar memeriksa status ke server tiap 3 detik (FR-21).',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Countdown Timer 5 Menit (FR-17.1)
+          Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.timer_outlined,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Berlaku: $mins:$secs',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    '(Otomatis refresh jika habis)',
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor: AppColors.outline,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    progress < 0.2 ? Colors.red : AppColors.primary,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Mengerti'),
+          const SizedBox(height: 20),
+
+          // Tombol Batalkan Sesi QR (FR-17.2 Delete)
+          OutlinedButton.icon(
+            onPressed: _handleCancelSession,
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              size: 18,
+              color: Colors.red,
+            ),
+            label: const Text(
+              'Batalkan Sesi QR',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.red),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSafetyProtocolCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Text(
+            'Protokol Serah Terima Aman Kampus:',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF334155),
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            '• Pastikan barang diperiksa bersama peminat sebelum konfirmasi.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          SizedBox(height: 3),
+          Text(
+            '• Tunjukkan QR ini kepada peminat untuk dipindai melalui kamera aplikasi.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          SizedBox(height: 3),
+          Text(
+            '• Sistem akan otomatis menyelesaikan transaksi begitu pemindaian valid.',
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
         ],
       ),

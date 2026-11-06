@@ -46,13 +46,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    if (nim.length < 8) {
-      AppSnackBar.showError(
-        context,
-        'Format NIM tidak valid (minimal 8–10 digit).',
-      );
-      return;
-    }
+    // Aturan NIM, email kampus, dan kata sandi (BR-A1/A2) diperiksa di
+    // AuthViewModel.register agar sama persis dengan validasi server.
 
     final authViewModel = context.read<AuthViewModel>();
     final success = await authViewModel.register(
@@ -167,8 +162,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       );
                     }).toList(),
                     onChanged: (val) {
-                      if (val != null)
+                      if (val != null) {
                         setState(() => _selectedUniversity = val);
+                      }
                     },
                   ),
                 ],
@@ -188,7 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               AppTextField(
                 label: 'Kata Sandi',
-                hintText: 'Minimal 8 karakter',
+                hintText: 'Min. 8 karakter, huruf & angka',
                 controller: _passwordController,
                 obscureText: _obscurePassword,
                 prefixIcon: const Icon(Icons.lock_outline, size: 20),

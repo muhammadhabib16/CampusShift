@@ -82,6 +82,17 @@ class GrantClaim {
   }
 
   factory GrantClaim.fromJson(Map<String, dynamic> json) {
+    // Antrean donatur (`GET /items/:id/claims`) menyertakan objek `applicant`
+    // { id, name, nim, photo_url, reputation: { average, count } }.
+    final applicant = json['applicant'] is Map
+        ? Map<String, dynamic>.from(json['applicant'] as Map)
+        : const <String, dynamic>{};
+    final reputation = applicant['reputation'] is Map
+        ? Map<String, dynamic>.from(applicant['reputation'] as Map)
+        : const <String, dynamic>{};
+    final status = (json['status'] ?? 'Pending').toString();
+    final serverReason = json['reason']?.toString();
+
     return GrantClaim(
       id: (json['claim_id'] ?? json['id'] ?? '').toString(),
       itemId: (json['item_id'] ?? json['itemId'] ?? json['grant_id'] ?? '').toString(),
@@ -90,18 +101,20 @@ class GrantClaim {
       itemCondition: (json['item_condition'] ?? json['itemCondition'] ?? 'Baik').toString(),
       donorUserId: (json['donor_user_id'] ?? json['donorUserId'] ?? json['owner_user_id'] ?? '').toString(),
       donorName: (json['donor_name'] ?? json['donorName'] ?? 'Donatur Unand').toString(),
-      applicantUserId: (json['applicant_user_id'] ?? json['applicantUserId'] ?? json['user_id'] ?? '').toString(),
-      applicantName: (json['applicant_name'] ?? json['applicantName'] ?? json['user_name'] ?? 'Mahasiswa Unand').toString(),
-      applicantNim: (json['applicant_nim'] ?? json['applicantNim'] ?? '').toString(),
-      applicantPhotoUrl: (json['applicant_photo_url'] ?? json['applicantPhotoUrl'] ?? '').toString(),
-      applicantReputation: json['applicant_reputation'] != null
-          ? double.tryParse(json['applicant_reputation'].toString())
+      applicantUserId: (json['applicant_user_id'] ?? json['applicantUserId'] ?? applicant['id'] ?? json['user_id'] ?? '').toString(),
+      applicantName: (json['applicant_name'] ?? json['applicantName'] ?? applicant['name'] ?? json['user_name'] ?? 'Mahasiswa Unand').toString(),
+      applicantNim: (json['applicant_nim'] ?? json['applicantNim'] ?? applicant['nim'] ?? '').toString(),
+      applicantPhotoUrl: (json['applicant_photo_url'] ?? json['applicantPhotoUrl'] ?? applicant['photo_url'] ?? '').toString(),
+      applicantReputation: (json['applicant_reputation'] ?? reputation['average']) != null
+          ? double.tryParse((json['applicant_reputation'] ?? reputation['average']).toString())
           : null,
-      applicantReviewCount: int.tryParse((json['applicant_review_count'] ?? 0).toString()) ?? 0,
-      urgency: (json['urgensi'] ?? json['urgency'] ?? 'Sedang').toString(),
-      justification: (json['justifikasi'] ?? json['justification'] ?? json['reason'] ?? '').toString(),
-      status: (json['status'] ?? 'Pending').toString(),
-      rejectionReason: json['alasan_penolakan']?.toString() ?? json['rejection_reason']?.toString(),
+      applicantReviewCount: int.tryParse((json['applicant_review_count'] ?? reputation['count'] ?? 0).toString()) ?? 0,
+      urgency: (json['urgency_category'] ?? json['urgensi'] ?? json['urgency'] ?? 'Sedang').toString(),
+      justification: (json['justification_text'] ?? json['justifikasi'] ?? json['justification'] ?? '').toString(),
+      status: status,
+      rejectionReason: json['alasan_penolakan']?.toString() ??
+          json['rejection_reason']?.toString() ??
+          ((status == 'Rejected' || status == 'Cancelled') ? serverReason : null),
       meetupId: json['meetup_id']?.toString() ?? json['meetupId']?.toString(),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()

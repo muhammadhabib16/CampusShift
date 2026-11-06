@@ -1,18 +1,24 @@
 import '../models/item_model.dart';
 import '../models/listing_summary.dart';
+import 'backend.dart';
 import 'item_service.dart';
 
 /// Sumber data Beranda: listing Available terbaru dari API Modul 1
 /// (`GET /api/items`).
 ///
-/// SEMENTARA, bila API listing belum bisa dihubungi atau belum berisi data,
-/// Beranda memakai data contoh di bawah agar demo tetap berjalan.
+/// Pengguna login: data server apa adanya (kosong berarti belum ada listing;
+/// gagal dimuat dilaporkan sebagai error). Data contoh di bawah hanya untuk
+/// mode demo tanpa login, agar barang fiktif tidak bisa diajukan ke server.
 class HomeService {
-  /// [fetchItems] dapat diganti pada pengujian agar tidak memanggil server.
-  HomeService({Future<List<ItemModel>> Function()? fetchItems})
-    : _fetchItems = fetchItems ?? (() => ItemService.getCatalog());
+  /// [fetchItems] dan [isOnline] dapat diganti pada pengujian.
+  HomeService({
+    Future<List<ItemModel>> Function()? fetchItems,
+    Future<bool> Function()? isOnline,
+  }) : _fetchItems = fetchItems ?? (() => ItemService.getCatalog()),
+       _isOnline = isOnline ?? Backend.isOnline;
 
   final Future<List<ItemModel>> Function() _fetchItems;
+  final Future<bool> Function() _isOnline;
 
   static const int _latestLimit = 5;
   static const Duration _timeout = Duration(seconds: 8);
@@ -67,6 +73,15 @@ class HomeService {
 
   /// Listing Available terbaru untuk ditampilkan di Beranda.
   Future<List<ListingSummary>> getLatestListings() async {
+    if (await _isOnline()) {
+      final items = await _fetchItems().timeout(_timeout);
+      return items
+          .where((item) => item.status == 'Available')
+          .take(_latestLimit)
+          .map(ListingSummary.fromItem)
+          .toList();
+    }
+
     try {
       final items = await _fetchItems().timeout(_timeout);
       final available = items

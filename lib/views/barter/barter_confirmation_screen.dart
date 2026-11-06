@@ -53,9 +53,29 @@ class BarterConfirmationScreen extends StatelessWidget {
       confirmIcon: Icons.cancel_outlined,
     );
 
-    if (confirmed && context.mounted) {
-      AppSnackBar.showInfo(context, 'Kesepakatan barter dibatalkan.');
+    if (!confirmed || !context.mounted) return;
+
+    final viewModel = context.read<BarterViewModel>();
+    final isOpen = deal.status == 'Menunggu' || deal.status == 'Negosiasi';
+    // Penerima menolak tawaran yang masih berjalan; Pengaju membatalkan/menarik.
+    final ok = (!deal.isSentByMe && isOpen)
+        ? await viewModel.rejectDeal(deal.id)
+        : await viewModel.cancelDeal(deal.id);
+    if (!context.mounted) return;
+
+    if (ok) {
+      AppSnackBar.showInfo(
+        context,
+        (!deal.isSentByMe && isOpen)
+            ? 'Tawaran barter ditolak.'
+            : 'Kesepakatan barter dibatalkan.',
+      );
       Navigator.pop(context);
+    } else {
+      AppSnackBar.showError(
+        context,
+        viewModel.errorMessage ?? 'Gagal membatalkan tawaran barter.',
+      );
     }
   }
 
@@ -183,7 +203,27 @@ class BarterConfirmationScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                _buildDetailRow('Mitra Barter', deal.partnerName),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Mitra Barter',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Flexible(
+                      child: UserLink(
+                        userId: deal.partnerUserId,
+                        name: deal.partnerName,
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
                 const Divider(height: 20, color: AppColors.outline),
                 _buildDetailRow(
                   'Tambahan Tunai (Top-Up)',
@@ -279,39 +319,68 @@ class BarterConfirmationScreen extends StatelessWidget {
               isDestructive: true,
               onPressed: () => _cancelDeal(context, deal),
             ),
+          ] else if ((deal.status == 'Menunggu' ||
+                  deal.status == 'Negosiasi') &&
+              (deal.canDelete == true ||
+                  deal.canCancel == true ||
+                  deal.canReject == true ||
+                  (deal.canDelete == null && deal.isSentByMe))) ...[
+            // Sudah menyetujui dan menunggu mitra: Pengaju tetap dapat menarik
+            // (belum ditanggapi, BR-20) atau membatalkan tawarannya.
+            AppSecondaryButton(
+              label: deal.canDelete == true
+                  ? 'Tarik Tawaran'
+                  : 'Batalkan Tawaran',
+              isDestructive: true,
+              onPressed: () => _cancelDeal(context, deal),
+            ),
           ] else if (isLocked) ...[
+            // Server: jadwal pertemuan barter hanya diajukan oleh Pengaju.
             StepBanner(
               title: 'Kesepakatan Telah Terkunci!',
-              description: 'Silakan ajukan titik Safe-Meet Point dan jadwal pertemuan COD untuk serah terima barang.',
+              description: deal.isSentByMe
+                  ? 'Silakan ajukan titik Safe-Meet Point dan jadwal pertemuan COD untuk serah terima barang.'
+                  : '${deal.partnerName} (Pengaju) akan mengajukan titik temu & jadwal. Cek menu Jadwal Pertemuan untuk mengonfirmasinya.',
               stepNumber: 3,
             ),
             const SizedBox(height: AppSpacing.md),
-            AppPrimaryButton(
-              label: 'Ajukan Titik Temu & Jadwal COD',
-              icon: Icons.calendar_month_rounded,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MeetupFormScreen(
-                      itemId:
-                          int.tryParse(
-                            deal.partnerItem.id.replaceAll(RegExp(r'\D'), ''),
-                          ) ??
-                          0,
-                      itemTitle:
-                          '${deal.partnerItem.name} ⇄ ${deal.myItem.name}',
-                      itemPrice: deal.cashTopUp > 0
-                          ? 'Top-up ${formatRupiah(deal.cashTopUp)}'
-                          : 'Tanpa selisih tunai',
-                      itemType: 'Barter',
-                      ownerId: 0,
-                      ownerName: deal.partnerName,
+            if (deal.canCancel ?? true) ...[
+              AppSecondaryButton(
+                label: 'Batalkan Kesepakatan',
+                isDestructive: true,
+                onPressed: () => _cancelDeal(context, deal),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            if (deal.isSentByMe)
+              AppPrimaryButton(
+                label: 'Ajukan Titik Temu & Jadwal COD',
+                icon: Icons.calendar_month_rounded,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MeetupFormScreen(
+                        itemId:
+                            int.tryParse(
+                              deal.partnerItem.id.replaceAll(RegExp(r'\D'), ''),
+                            ) ??
+                            0,
+                        itemTitle:
+                            '${deal.partnerItem.name} ⇄ ${deal.myItem.name}',
+                        itemPrice: deal.cashTopUp > 0
+                            ? 'Top-up ${formatRupiah(deal.cashTopUp)}'
+                            : 'Tanpa selisih tunai',
+                        itemType: 'Barter',
+                        ownerId: deal.partnerUserId,
+                        ownerName: deal.partnerName,
+                        // Server menentukan barang & pemilik dari kesepakatan.
+                        dealId: int.tryParse(deal.id),
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
           ],
           const SizedBox(height: AppSpacing.xxl),
         ],

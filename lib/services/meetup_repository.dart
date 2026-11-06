@@ -3,9 +3,16 @@ import 'package:flutter/foundation.dart';
 import '../models/meetup.dart';
 import '../models/safe_meet_point.dart';
 import '../utils/haversine.dart';
+import 'backend.dart';
+import '../utils/error_message.dart';
 
-/// Penyimpanan pertemuan (in-memory) Modul 2. Memberi tahu pendengar
-/// (misalnya kartu pertemuan di Beranda) setiap kali data pertemuan berubah.
+/// Repository pertemuan Modul 2 — cache yang disinkronkan dengan backend.
+///
+/// - Login (ada JWT): [refresh] memuat `GET /safe-meet-points` dan
+///   `GET /meetups/me`; setiap aksi (ajukan, ubah, hapus, konfirmasi, tolak,
+///   batal) dikirim ke server lalu cache diperbarui. Layar tetap membaca data
+///   secara sinkron dari cache dan mendengarkan [notifyListeners].
+/// - Tanpa login (mode uji/demo): memakai data contoh in-memory.
 class MeetupRepository extends ChangeNotifier {
   // Singleton pattern
   static final MeetupRepository _instance = MeetupRepository._internal();
@@ -18,15 +25,26 @@ class MeetupRepository extends ChangeNotifier {
   static String currentUserName = 'Bayu Mutawakkil';
   static String currentUserNim = '2411522023';
 
+  /// True setelah pengguna login: data contoh tidak lagi dipakai.
+  static bool _loggedIn = false;
+
   /// Dipanggil saat masuk ke halaman utama setelah login.
   static void setCurrentUser({
     required int id,
     required String name,
     required String nim,
   }) {
+    final changedUser = _loggedIn && currentUserId != id;
     currentUserId = id;
     currentUserName = name;
     currentUserNim = nim;
+    _loggedIn = true;
+    final repo = MeetupRepository();
+    if (changedUser || !repo._onlineMode) {
+      // Buang data contoh / data akun sebelumnya; diisi ulang lewat refresh().
+      repo._meetups.clear();
+      repo._initialized = true;
+    }
   }
 
   // Seed Data Safe-Meet Points Resmi Kampus (FR-06 & BR-11)
@@ -116,14 +134,23 @@ class MeetupRepository extends ChangeNotifier {
     ),
   ];
 
-  // In-Memory Database Meetups
+  // Cache pertemuan
   final List<Meetup> _meetups = [];
 
   bool _initialized = false;
+  bool _onlineMode = false;
+  bool _isRefreshing = false;
+
+  /// Pesan galat sinkronisasi terakhir (null bila berhasil).
+  String? lastSyncError;
+
+  bool get isOnlineMode => _onlineMode;
+  bool get isRefreshing => _isRefreshing;
 
   void ensureInitialized() {
     if (_initialized) return;
     _initialized = true;
+    if (_loggedIn) return; // data asli dimuat lewat refresh()
 
     final now = DateTime.now();
 
@@ -199,6 +226,98 @@ class MeetupRepository extends ChangeNotifier {
         itemStatus: 'Available',
       ),
     );
+  }
+
+  /// Sinkronisasi titik temu & pertemuan dari backend. Tidak melakukan apa pun
+  /// pada mode tanpa login.
+  Future<void> refresh() async {
+    if (!await Backend.isOnline()) return;
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    _onlineMode = true;
+    _initialized = true;
+    String? error;
+
+    // Dimuat terpisah: kegagalan satu endpoint tidak membatalkan yang lain.
+    try {
+      final points = Backend.list(
+        await Backend.client.get('/safe-meet-points'),
+      ).map(SafeMeetPoint.fromJson).toList();
+      _serverPointIds = points.map((p) => p.id).toSet();
+      if (points.isNotEmpty) {
+        _officialPoints
+          ..clear()
+          ..addAll(points);
+      } else {
+        error = noServerPointsMessage;
+      }
+    } catch (e) {
+      error = errorMessageOf(e, fallback: _connectionError);
+    }
+
+    try {
+      final meetups = Backend.list(
+        await Backend.client.get('/meetups/me'),
+      ).map(Meetup.fromJson).toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      _meetups
+        ..clear()
+        ..addAll(meetups);
+    } catch (e) {
+      error ??= errorMessageOf(e, fallback: _connectionError);
+    }
+
+    lastSyncError = error;
+    _isRefreshing = false;
+    notifyListeners();
+  }
+
+  /// ID titik temu yang benar-benar ada di server (null = belum dimuat).
+  Set<int>? _serverPointIds;
+
+  static const String noServerPointsMessage =
+      'Daftar titik temu resmi belum tersedia. Coba lagi nanti atau hubungi '
+      'admin CampuShift.';
+
+  /// Memastikan titik temu yang dipilih terdaftar di server sebelum dikirim,
+  /// agar pengguna mendapat pesan yang jelas alih-alih ditolak server.
+  Future<void> _ensureServerPoint(SafeMeetPoint point) async {
+    if (_serverPointIds == null) await refresh();
+    final ids = _serverPointIds;
+    if (ids == null) {
+      throw ValidationException(lastSyncError ?? 'Gagal memuat titik temu dari server.');
+    }
+    if (ids.isEmpty) throw ValidationException(noServerPointsMessage);
+    if (!ids.contains(point.id)) {
+      throw ValidationException(
+        'Titik temu "${point.name}" tidak terdaftar di server. Pilih ulang titik temu.',
+      );
+    }
+  }
+
+  static const String _connectionError =
+      'Tidak dapat terhubung ke server. Periksa koneksi internet.';
+
+  /// Menjalankan aksi ke server; error diubah menjadi [ValidationException]
+  /// agar pesan dari backend tampil apa adanya di SnackBar.
+  Future<Meetup> _remote(Future<dynamic> Function() call) async {
+    try {
+      final meetup = Meetup.fromJson(Backend.map(await call()));
+      _upsert(meetup);
+      return meetup;
+    } catch (e) {
+      throw ValidationException(errorMessageOf(e, fallback: _connectionError));
+    }
+  }
+
+  void _upsert(Meetup meetup) {
+    final index = _meetups.indexWhere((m) => m.id == meetup.id);
+    if (index == -1) {
+      _meetups.insert(0, meetup);
+    } else {
+      _meetups[index] = meetup;
+    }
+    notifyListeners();
   }
 
   // Ambil list Safe-Meet Point resmi yang terurut berdasarkan GPS (FR-06, BR-11, AC-07, AC-08)
@@ -280,7 +399,7 @@ class MeetupRepository extends ChangeNotifier {
       return ValidationResult(
         isValid: false,
         message:
-            'Waktu pertemuan tidak valid ($diffMinutes menit lagi). Sesuai aturan BR-07, jadwal minimal 1 jam dari waktu pengajuan.',
+            'Waktu pertemuan tidak valid ($diffMinutes menit lagi). Jadwal minimal 1 jam dari waktu pengajuan.',
       );
     }
 
@@ -296,6 +415,9 @@ class MeetupRepository extends ChangeNotifier {
     return ValidationResult(isValid: true);
   }
 
+  /// Mengajukan pertemuan. Jalur ditentukan server dari referensi:
+  /// [dealId] (Barter, kesepakatan Locked), [claimId] (Hibah, klaim Approved),
+  /// atau [itemId] (Jual).
   Future<Meetup> createMeetup({
     required int itemId,
     required String itemTitle,
@@ -308,6 +430,8 @@ class MeetupRepository extends ChangeNotifier {
     required SafeMeetPoint safeMeetPoint,
     required DateTime scheduledTime,
     String notes = '',
+    int? dealId,
+    int? claimId,
   }) async {
     ensureInitialized();
 
@@ -323,6 +447,26 @@ class MeetupRepository extends ChangeNotifier {
       throw ValidationException(timeValidation.message!);
     }
 
+    if (await Backend.isOnline()) {
+      await _ensureServerPoint(safeMeetPoint);
+      return _remote(
+        () => Backend.client.post(
+          '/meetups',
+          body: {
+            if (dealId != null)
+              'deal_id': dealId
+            else if (claimId != null)
+              'claim_id': claimId
+            else
+              'item_id': itemId,
+            'point_id': safeMeetPoint.id,
+            'scheduled_time': scheduledTime.toUtc().toIso8601String(),
+            if (notes.isNotEmpty) 'notes': notes,
+          },
+        ),
+      );
+    }
+
     // Validasi BR-08: 1 Peminat hanya dapat memiliki 1 pertemuan aktif untuk barang yang sama
     final hasActiveMeetup = _meetups.any(
       (m) =>
@@ -332,7 +476,7 @@ class MeetupRepository extends ChangeNotifier {
     );
     if (hasActiveMeetup) {
       throw ValidationException(
-        'Kamu sudah memiliki ajakan pertemuan aktif untuk barang ini (Aturan BR-08). Batalkan atau tunggu pertemuan sebelumnya selesai.',
+        'Kamu sudah memiliki ajakan pertemuan aktif untuk barang ini. Batalkan atau tunggu pertemuan sebelumnya selesai.',
       );
     }
 
@@ -361,6 +505,8 @@ class MeetupRepository extends ChangeNotifier {
       status: 'Diajukan',
       createdAt: DateTime.now(),
       itemStatus: 'Available',
+      dealId: dealId,
+      claimId: claimId,
     );
 
     _meetups.insert(0, newMeetup);
@@ -379,6 +525,25 @@ class MeetupRepository extends ChangeNotifier {
     String? newNotes,
   }) async {
     ensureInitialized();
+
+    if (await Backend.isOnline()) {
+      final timeValidation = validateMeetupTime(newScheduledTime);
+      if (!timeValidation.isValid) {
+        throw ValidationException(timeValidation.message!);
+      }
+      await _ensureServerPoint(newPoint);
+      return _remote(
+        () => Backend.client.put(
+          '/meetups/$id',
+          body: {
+            'point_id': newPoint.id,
+            'scheduled_time': newScheduledTime.toUtc().toIso8601String(),
+            'notes': ?newNotes,
+          },
+        ),
+      );
+    }
+
     final index = _meetups.indexWhere((m) => m.id == id);
     if (index == -1) throw Exception('Pertemuan tidak ditemukan.');
 
@@ -421,6 +586,18 @@ class MeetupRepository extends ChangeNotifier {
   // ==========================================
   Future<bool> deleteMeetup(int id) async {
     ensureInitialized();
+
+    if (await Backend.isOnline()) {
+      try {
+        await Backend.client.delete('/meetups/$id');
+      } catch (e) {
+        throw ValidationException(errorMessageOf(e, fallback: _connectionError));
+      }
+      _meetups.removeWhere((m) => m.id == id);
+      notifyListeners();
+      return true;
+    }
+
     final index = _meetups.indexWhere((m) => m.id == id);
     if (index == -1) return false;
 
@@ -429,7 +606,7 @@ class MeetupRepository extends ChangeNotifier {
     // BR-13: Ajakan hanya dapat dihapus oleh Peminat pembuatnya dan hanya selama 'Diajukan'
     if (target.requesterId != currentUserId) {
       throw ValidationException(
-        'Hanya peminat pembuat ajakan yang dapat menghapus ajakan ini (BR-13).',
+        'Hanya peminat pembuat ajakan yang dapat menghapus ajakan ini.',
       );
     }
     if (!target.isDiajukan) {
@@ -451,6 +628,16 @@ class MeetupRepository extends ChangeNotifier {
   // ==========================================
   Future<Meetup> confirmMeetup(int id) async {
     ensureInitialized();
+
+    if (await Backend.isOnline()) {
+      final confirmed = await _remote(
+        () => Backend.client.put('/meetups/$id/confirm'),
+      );
+      // Server membatalkan ajakan lain atas barang yang sama (AC-10).
+      await refresh();
+      return confirmed;
+    }
+
     final index = _meetups.indexWhere((m) => m.id == id);
     if (index == -1) throw Exception('Pertemuan tidak ditemukan.');
 
@@ -477,7 +664,7 @@ class MeetupRepository extends ChangeNotifier {
             _meetups[i].isDiajukan) {
           _meetups[i] = _meetups[i].copyWith(
             status: 'Dibatalkan',
-            cancellationReason: 'Dibatalkan otomatis karena pemilik menyetujui pertemuan lain (AC-10)',
+            cancellationReason: 'Dibatalkan otomatis karena pemilik menyetujui pertemuan lain',
           );
         }
       }
@@ -496,6 +683,13 @@ class MeetupRepository extends ChangeNotifier {
     String reason = 'Ditolak oleh pemilik barang',
   }) async {
     ensureInitialized();
+
+    if (await Backend.isOnline()) {
+      return _remote(
+        () => Backend.client.put('/meetups/$id/reject', body: {'reason': reason}),
+      );
+    }
+
     final index = _meetups.indexWhere((m) => m.id == id);
     if (index == -1) throw Exception('Pertemuan tidak ditemukan.');
 
@@ -517,6 +711,13 @@ class MeetupRepository extends ChangeNotifier {
   // ==========================================
   Future<Meetup> cancelMeetup(int id, {required String reason}) async {
     ensureInitialized();
+
+    if (await Backend.isOnline()) {
+      return _remote(
+        () => Backend.client.put('/meetups/$id/cancel', body: {'reason': reason}),
+      );
+    }
+
     final index = _meetups.indexWhere((m) => m.id == id);
     if (index == -1) throw Exception('Pertemuan tidak ditemukan.');
 
@@ -537,11 +738,41 @@ class MeetupRepository extends ChangeNotifier {
   }
 
   // ==========================================
+  // COMPLETE MEETUP (FR-18 & BR-23)
+  // Serah terima QR berhasil: pertemuan menjadi Selesai, barang menjadi Completed.
+  // ==========================================
+  Future<Meetup> completeMeetup(int id) async {
+    ensureInitialized();
+
+    // Mode server: status diubah oleh `POST /handover/verify`; cukup muat ulang.
+    if (await Backend.isOnline()) {
+      await refresh();
+      final meetup = getMeetupById(id);
+      if (meetup == null) throw Exception('Pertemuan tidak ditemukan.');
+      return meetup;
+    }
+
+    final index = _meetups.indexWhere((m) => m.id == id);
+    if (index == -1) throw Exception('Pertemuan tidak ditemukan.');
+
+    final target = _meetups[index];
+    final completed = target.copyWith(
+      status: 'Selesai',
+      itemStatus: 'Completed',
+    );
+
+    _meetups[index] = completed;
+    notifyListeners();
+    return completed;
+  }
+
+  // ==========================================
   // BR-09: AUTO-EXPIRE SERVER SIMULATION
   // Ajakan yang belum dikonfirmasi hingga waktu pertemuan terlewati
   // dianggap Dibatalkan oleh server.
   // ==========================================
   void _checkOverdueMeetups() {
+    if (_onlineMode) return; // server menjalankan BR-09 sendiri
     final now = DateTime.now();
     for (var i = 0; i < _meetups.length; i++) {
       final m = _meetups[i];
@@ -549,7 +780,7 @@ class MeetupRepository extends ChangeNotifier {
         _meetups[i] = m.copyWith(
           status: 'Dibatalkan',
           cancellationReason:
-              'Waktu pertemuan telah terlewati tanpa konfirmasi (Aturan BR-09)',
+              'Waktu pertemuan telah terlewati tanpa konfirmasi',
         );
       }
     }

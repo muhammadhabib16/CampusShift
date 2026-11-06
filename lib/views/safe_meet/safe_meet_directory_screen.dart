@@ -51,6 +51,11 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
 
   Future<void> _initData() async {
     _loadPoints();
+    await _repository.refresh(); // titik temu resmi dari server
+    if (!mounted) return;
+    _loadPoints();
+    final syncError = _repository.lastSyncError;
+    if (syncError != null) AppSnackBar.showError(context, syncError);
     await _detectGps(showFeedback: false);
   }
 
@@ -125,7 +130,7 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
       } else {
         _userLat = null;
         _userLng = null;
-        _gpsWarningMessage = 'Mode Uji AC-08: GPS dinonaktifkan. Jarak ditampilkan "—" dan daftar diurutkan menurut abjad nama tanpa crash.';
+        _gpsWarningMessage = 'GPS dinonaktifkan. Jarak ditampilkan "—" dan daftar diurutkan menurut abjad nama.';
       }
     });
 
@@ -134,12 +139,12 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
     if (_gpsActive) {
       AppSnackBar.showSuccess(
         context,
-        'Mode AC-07 Aktif: Lokasi GPS terdeteksi, titik temu terurut dari terdekat.',
+        'Lokasi GPS terdeteksi, titik temu terurut dari terdekat.',
       );
     } else {
       AppSnackBar.showInfo(
         context,
-        'Mode AC-08 Aktif: GPS dimatikan, jarak "—", urut alfabetis.',
+        'GPS dimatikan, jarak "—", urut alfabetis.',
       );
     }
   }
@@ -189,7 +194,7 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
             },
           ),
           IconButton(
-            tooltip: 'Simulasi GPS (AC-07 / AC-08)',
+            tooltip: 'Simulasi GPS',
             icon: Icon(
               _gpsActive ? Icons.gps_fixed_rounded : Icons.gps_off_rounded,
               color: _gpsActive ? AppColors.primary : AppColors.error,
@@ -207,7 +212,7 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
                 horizontal: AppSpacing.lg,
                 vertical: 10,
               ),
-              color: const Color(0xFFFEF3C7),
+              color: AppColors.warningContainer,
               child: Row(
                 children: [
                   const Icon(
@@ -218,7 +223,7 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      _gpsWarningMessage ?? 'Izin lokasi tidak aktif. Jarak ditampilkan "—" (AC-08).',
+                      _gpsWarningMessage ?? 'Izin lokasi tidak aktif. Jarak ditampilkan "—".',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF78350F),
@@ -566,7 +571,7 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: _gpsActive
-                                ? const Color(0xFFDCFCE7)
+                                ? AppColors.successContainer
                                 : AppColors.surfaceVariant,
                             borderRadius: AppRadius.pill,
                           ),
@@ -577,7 +582,7 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
                                 Icons.near_me_rounded,
                                 size: 12,
                                 color: _gpsActive
-                                    ? const Color(0xFF15803D)
+                                    ? AppColors.success
                                     : AppColors.textSecondary,
                               ),
                               const SizedBox(width: 4),
@@ -587,7 +592,7 @@ class _SafeMeetDirectoryScreenState extends State<SafeMeetDirectoryScreen> {
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: _gpsActive
-                                      ? const Color(0xFF15803D)
+                                      ? AppColors.success
                                       : AppColors.textSecondary,
                                 ),
                               ),

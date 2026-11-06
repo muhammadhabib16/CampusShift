@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/push_service.dart';
 
 /// State dan logika autentikasi (Modul Pendukung). View splash, login,
 /// registrasi, beranda, dan profil memakai ViewModel ini alih-alih memanggil
@@ -36,6 +39,8 @@ class AuthViewModel extends ChangeNotifier {
     _currentUser = loggedIn ? await AuthService.getCurrentUser() : null;
     _token = loggedIn ? await AuthService.getToken() : null;
     notifyListeners();
+    // Token FCM bisa berubah selama aplikasi tertutup; daftarkan ulang tanpa menahan splash.
+    if (loggedIn) unawaited(PushService.registerDevice());
     return loggedIn;
   }
 
@@ -54,6 +59,7 @@ class AuthViewModel extends ChangeNotifier {
     if (success) {
       _currentUser = await AuthService.getCurrentUser();
       _token = await AuthService.getToken();
+      unawaited(PushService.registerDevice());
     }
     _setLoading(false);
     return success;
@@ -84,9 +90,24 @@ class AuthViewModel extends ChangeNotifier {
       return false;
     }
 
-    if (!trimmedEmail.endsWith('@student.unand.ac.id') &&
-        !trimmedEmail.endsWith('@unand.ac.id')) {
+    // BR-A1: server hanya menerima domain @student.unand.ac.id.
+    if (!trimmedEmail.endsWith('@student.unand.ac.id')) {
       _message = 'Pendaftaran saat ini khusus mahasiswa Universitas Andalas (@student.unand.ac.id)';
+      notifyListeners();
+      return false;
+    }
+
+    if (trimmedName.length < 3 || trimmedName.length > 60) {
+      _message = 'Nama lengkap harus 3–60 karakter';
+      notifyListeners();
+      return false;
+    }
+
+    // BR-A2: minimal 8 karakter dengan kombinasi huruf dan angka.
+    if (password.length < 8 ||
+        !RegExp(r'[A-Za-z]').hasMatch(password) ||
+        !RegExp(r'\d').hasMatch(password)) {
+      _message = 'Kata sandi minimal 8 karakter dan harus berisi huruf serta angka';
       notifyListeners();
       return false;
     }
@@ -106,8 +127,57 @@ class AuthViewModel extends ChangeNotifier {
     return success;
   }
 
+  /// Memuat profil terbaru dari server (nama, telepon) tanpa mengganggu UI
+  /// bila gagal — data tersimpan tetap dipakai.
+  Future<void> refreshProfile() async {
+    if (_token == null) return;
+    try {
+      final user = await AuthService.fetchProfile();
+      if (user != null) {
+        _currentUser = user;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<bool> updateProfile({
+    required String fullName,
+    required String phone,
+    String? bio,
+    String? photoPath,
+  }) async {
+    _setLoading(true);
+    final result = await AuthService.updateProfile(
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      bio: bio?.trim(),
+      photoPath: photoPath,
+    );
+    final success = result['success'] == true;
+    if (success) _currentUser = result['user'] as User;
+    _message = result['message'] as String?;
+    _setLoading(false);
+    return success;
+  }
+
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _setLoading(true);
+    final result = await AuthService.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+    _message = result['message'] as String?;
+    _setLoading(false);
+    return result['success'] == true;
+  }
+
   /// Menghapus token dan data pengguna yang tersimpan di perangkat.
   Future<void> logout() async {
+    // Hapus token FCM dari backend selagi JWT masih ada.
+    await PushService.unregisterDevice();
     await AuthService.logout();
     _message = null;
     _currentUser = null;

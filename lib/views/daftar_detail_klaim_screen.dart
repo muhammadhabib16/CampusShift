@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/grant_claim.dart';
 import '../viewmodels/grant_claim_viewmodel.dart';
 import 'ajukan_klaim_screen.dart';
+import 'safe_meet/meetup_form_screen.dart';
+import '../shared/widgets/user_link.dart';
+import '../theme/app_tokens.dart';
 
 class DaftarDetailKlaimScreen extends StatefulWidget {
   final GrantClaimViewModel? viewModel;
@@ -49,7 +52,7 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
               Expanded(child: Text(msg)),
             ],
           ),
-          backgroundColor: const Color(0xFF0D9488),
+          backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -69,13 +72,13 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
       case 'Approved':
         return const Color(0xFF16A34A);
       case 'Pending':
-        return const Color(0xFFD97706);
+        return AppColors.warning;
       case 'Rejected':
-        return const Color(0xFFDC2626);
+        return AppColors.error;
       case 'Cancelled':
         return Colors.grey.shade700;
       case 'Completed':
-        return const Color(0xFF0D9488);
+        return AppColors.primary;
       default:
         return Colors.blueGrey;
     }
@@ -84,11 +87,11 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
   Color _urgencyColor(String urgency) {
     switch (urgency) {
       case 'Mendesak':
-        return const Color(0xFFDC2626);
+        return AppColors.error;
       case 'Sedang':
-        return const Color(0xFFD97706);
+        return AppColors.warning;
       default:
-        return const Color(0xFF0D9488);
+        return AppColors.primary;
     }
   }
 
@@ -99,7 +102,7 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
         title: const Text('Hapus Klaim Permanen?'),
         content: Text(
           'Klaim untuk "${claim.itemTitle}" masih berstatus Pending. '
-          'Jika dihapus, data klaim akan hilang permanen dari basis data dan antrean donatur, serta kuota klaim aktif Anda akan berkurang (BR-32).',
+          'Jika dihapus, data klaim akan hilang permanen dari antrean donatur, serta kuota klaim aktif Anda akan berkurang.',
         ),
         actions: [
           TextButton(
@@ -125,10 +128,10 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
         SnackBar(
           content: Text(
             ok
-                ? 'Klaim Pending berhasil dihapus permanen (AC-31).'
+                ? 'Klaim Pending berhasil dihapus permanen.'
                 : (_vm.errorMessage ?? 'Gagal menghapus klaim.'),
           ),
-          backgroundColor: ok ? const Color(0xFF0D9488) : Colors.redAccent,
+          backgroundColor: ok ? AppColors.primary : Colors.redAccent,
         ),
       );
     }
@@ -140,7 +143,7 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
       builder: (ctx) => AlertDialog(
         title: const Text('Batalkan Klaim yang Disetujui?'),
         content: Text(
-          'Klaim "${claim.itemTitle}" akan diubah menjadi Cancelled dan status barang dikembalikan menjadi Available (BR-31).',
+          'Klaim "${claim.itemTitle}" akan diubah menjadi Cancelled dan status barang dikembalikan menjadi Available.',
         ),
         actions: [
           TextButton(
@@ -166,10 +169,10 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
         SnackBar(
           content: Text(
             ok
-                ? 'Klaim dibatalkan (Cancelled) dan barang kembali Available (BR-31).'
+                ? 'Klaim dibatalkan (Cancelled) dan barang kembali Available.'
                 : (_vm.errorMessage ?? 'Gagal membatalkan klaim.'),
           ),
-          backgroundColor: ok ? const Color(0xFF0D9488) : Colors.redAccent,
+          backgroundColor: ok ? AppColors.primary : Colors.redAccent,
         ),
       );
     }
@@ -186,7 +189,7 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Anda dapat menyertakan alasan penolakan singkat (opsional) yang akan terlihat oleh pemohon (BR-30):',
+              'Anda dapat menyertakan alasan penolakan singkat (opsional) yang akan terlihat oleh pemohon:',
               style: TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 10),
@@ -283,13 +286,17 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  'Pemohon: ${claim.applicantName} • Reputasi: ${claim.reputationLabel}',
+                UserLink(
+                  userId: claim.applicantUserId,
+                  name: claim.applicantName,
+                  prefix: 'Pemohon: ',
+                  suffix: ' • Reputasi: ${claim.reputationLabel}',
+                  maxLines: 2,
                   style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                 ),
                 const Divider(height: 24),
                 const Text(
-                  'Justifikasi Kebutuhan (FR-23):',
+                  'Justifikasi Kebutuhan:',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 const SizedBox(height: 6),
@@ -365,22 +372,30 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0D9488),
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () {
                         Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Mengarahkan ke Modul 2 (Jadwal Pertemuan Safe-Meet Point) dengan claim_id=${claim.id} & item_id=${claim.itemId}',
+                        // Modul 2: jadwal pengambilan hibah memakai claim_id;
+                        // server menentukan barang & donatur dari klaim.
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MeetupFormScreen(
+                              itemId: int.tryParse(claim.itemId) ?? 0,
+                              itemTitle: claim.itemTitle,
+                              itemPrice: 'Gratis (Hibah)',
+                              itemType: 'Hibah',
+                              ownerId: int.tryParse(claim.donorUserId) ?? 0,
+                              ownerName: claim.donorName,
+                              claimId: int.tryParse(claim.id),
                             ),
-                            backgroundColor: const Color(0xFF0D9488),
                           ),
                         );
                       },
                       icon: const Icon(Icons.location_on_rounded),
-                      label: const Text('Jadwalkan Pengambilan di Safe-Meet Point (Modul 2)'),
+                      label: const Text('Jadwalkan Pengambilan di Safe-Meet Point'),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -393,7 +408,7 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
                         _confirmCancelApproved(claim);
                       },
                       icon: const Icon(Icons.cancel_outlined),
-                      label: const Text('Batalkan Klaim (BR-31)'),
+                      label: const Text('Batalkan Klaim'),
                     ),
                   ),
                 ] else if (isDonorView && claim.status == 'Pending') ...[
@@ -414,7 +429,7 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0D9488),
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                           ),
                           onPressed: () {
@@ -441,11 +456,11 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kelola Klaim & Antrean Hibah'),
-        backgroundColor: const Color(0xFF0D9488),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            tooltip: 'Sinkronisasi Server (FR-27)',
+            tooltip: 'Sinkronisasi Server',
             onPressed: () => _vm.syncClaims(),
             icon: const Icon(Icons.sync_rounded),
           ),
@@ -627,7 +642,7 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
               border: Border.all(color: const Color(0xFF99F6E4)),
             ),
             child: const Text(
-              'Antrean Prioritas Donatur (FR-25 & BR-29): Diurutkan otomatis berdasarkan Urgensi (Mendesak → Sedang → Rendah), lalu waktu pengajuan terlama. Menyetujui 1 pemohon otomatis mengubah barang menjadi Reserved dan menolak klaim lainnya (AC-29).',
+              'Antrean Prioritas Donatur: Diurutkan otomatis berdasarkan Urgensi (Mendesak → Sedang → Rendah), lalu waktu pengajuan terlama. Menyetujui 1 pemohon otomatis mengubah barang menjadi Reserved dan menolak klaim lainnya.',
               style: TextStyle(fontSize: 12, color: Color(0xFF115E59)),
             ),
           ),
@@ -649,12 +664,12 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
                         children: [
                           CircleAvatar(
                             radius: 18,
-                            backgroundColor: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                             child: Text(
                               '#$idx',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0D9488),
+                                color: AppColors.primary,
                                 fontSize: 13,
                               ),
                             ),
@@ -664,8 +679,9 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  claim.applicantName,
+                                UserLink(
+                                  userId: claim.applicantUserId,
+                                  name: claim.applicantName,
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
                                 Text(
@@ -730,7 +746,7 @@ class _DaftarDetailKlaimScreenState extends State<DaftarDetailKlaimScreen>
                                 const SizedBox(width: 8),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF0D9488),
+                                    backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
                                     visualDensity: VisualDensity.compact,
                                   ),
