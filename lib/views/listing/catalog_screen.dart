@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/listing_options.dart';
+
 import '../../core/app_strings.dart';
 import '../../models/item_model.dart';
 import '../../shared/widgets/shared_widgets.dart';
@@ -19,6 +21,44 @@ class CatalogScreen extends StatefulWidget {
 }
 
 class _CatalogScreenState extends State<CatalogScreen> {
+  final _searchController = TextEditingController();
+  final Map<String, GlobalKey> _chipKeys = {};
+  String? _lastQuery;
+  String? _lastCategory;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Filter bisa diubah dari luar layar ini (mis. kartu Kategori Populer di
+  /// Beranda). Samakan isi kolom pencarian dan gulir chip kategori terpilih
+  /// agar terlihat.
+  void _syncWithFilter(ItemViewModel viewModel) {
+    if (_lastQuery != viewModel.searchQuery) {
+      _lastQuery = viewModel.searchQuery;
+      _searchController.text = viewModel.searchQuery;
+    }
+    if (_lastCategory != viewModel.selectedCategory) {
+      final isFirstBuild = _lastCategory == null;
+      _lastCategory = viewModel.selectedCategory;
+      if (!isFirstBuild || viewModel.selectedCategory != 'Semua Kategori') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final chipContext =
+              _chipKeys[viewModel.selectedCategory]?.currentContext;
+          if (chipContext != null) {
+            Scrollable.ensureVisible(
+              chipContext,
+              alignment: 0.5,
+              duration: const Duration(milliseconds: 250),
+            );
+          }
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +81,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ItemViewModel>(context);
+    _syncWithFilter(viewModel);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -76,6 +117,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
             icon: const Icon(Icons.tune_rounded, color: AppColors.primary),
             onPressed: () => _showFilterBottomSheet(context, viewModel),
           ),
+          const NotificationBell(),
         ],
       ),
       body: Column(
@@ -93,6 +135,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: _searchController,
+                    textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       hintText: 'Cari buku, kalkulator, meja…',
                       prefixIcon: const Icon(
@@ -141,13 +185,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 children:
                     [
                       'Semua Kategori',
-                      'Buku & Referensi',
-                      'Elektronik & Gadget',
-                      'Furnitur Kos',
-                      'Alat Perkuliahan',
+                      ...ListingOptions.categories,
                     ].map((category) {
                       final isSelected = viewModel.selectedCategory == category;
                       return Padding(
+                        key: _chipKeys.putIfAbsent(category, GlobalKey.new),
                         padding: const EdgeInsets.only(right: AppSpacing.sm),
                         child: ChoiceChip(
                           label: Text(category),
@@ -498,7 +540,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             },
           ),
           const Text(
-            'Catatan BR-02: Khusus barang tipe Hibah, harga otomatis Rp 0.',
+            'Catatan: Khusus barang tipe Hibah, harga otomatis Rp 0.',
             style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xl),

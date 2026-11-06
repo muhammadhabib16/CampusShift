@@ -103,3 +103,24 @@ Thumbs.db
 
 # Dokumen & Referensi Lokal Modul
 kebutuhan modul fadel/
+
+# Android native build (CMake / NDK)
+android/app/.cxx/
+.cxx/
+.externalNativeBuild/
+
+# FVM (Flutter Version Management)
+.fvm/flutter_sdk
+.fvm/versions
+
+# Sisa merge / patch
+*.orig
+*.rej
+*.bak
+
+# Folder backup lokal (jangan di-commit). Folder yang sudah terlacak
+# perlu dilepas dulu: git rm -r --cached lib_backup_racha
+lib_backup_*/
+
+# Konfigurasi Firebase Android (FCM): salin manual dari Firebase Console
+android/app/google-services.json

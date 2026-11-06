@@ -27,6 +27,14 @@ ItemModel _item(String id, {String status = 'Available'}) {
 
 void main() {
   group('Beranda memakai listing Modul 1', () {
+    test('saat login, katalog kosong tidak diganti data contoh', () async {
+      final service = HomeService(
+        fetchItems: () async => [],
+        isOnline: () async => true,
+      );
+      expect(await service.getLatestListings(), isEmpty);
+    });
+
     test('hanya listing Available yang tampil, maksimal 5', () async {
       final service = HomeService(
         fetchItems: () async => [
@@ -45,7 +53,7 @@ void main() {
     });
 
     test('memakai data contoh bila API listing gagal', () async {
-      final service = HomeService(fetchItems: () async => throw Exception('offline'));
+      final service = HomeService(fetchItems: () async => throw Exception('offline'), isOnline: () async => false);
       final listings = await service.getLatestListings();
       expect(listings.first.title, 'Buku Kalkulus Purcell Ed. 9');
     });

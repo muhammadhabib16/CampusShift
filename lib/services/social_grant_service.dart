@@ -1,9 +1,24 @@
 import '../models/social_grant.dart';
 import 'api_client.dart';
-import 'api_config.dart';
+import 'backend.dart';
 
+/// Sumber data Hibah Sosial (Modul 5).
+///
+/// Bila pengguna sudah login (ada JWT), data diambil dari backend
+/// `GET /api/items?type=Hibah`. Data contoh `_seedGrants` hanya dipakai pada
+/// mode demo tanpa login.
 class SocialGrantService {
-  final ApiClient _apiClient = ApiClient(baseUrl: ApiConfig.baseUrl, getToken: () => null);
+  SocialGrantService({ApiClient? apiClient})
+    : _apiClient =
+          apiClient ??
+          Backend.client;
+
+  final ApiClient _apiClient;
+
+  Future<bool> _isLoggedIn() async {
+    final token = await _apiClient.getToken();
+    return token != null && token.isNotEmpty;
+  }
 
   static final List<SocialGrant> _seedGrants = [
     SocialGrant(
@@ -61,14 +76,29 @@ class SocialGrantService {
     String? category,
     String? excludeOwnerId,
   }) async {
-    try {
-      final response = await _apiClient.get('/items?type=Hibah&status=Available');
-      if (response is List && response.isNotEmpty) {
-        return response
-            .map((e) => SocialGrant.fromJson(Map<String, dynamic>.from(e as Map)))
-            .toList();
-      }
-    } catch (_) {}
+    if (await _isLoggedIn()) {
+      final response = await _apiClient.get(
+        '/items',
+        query: {
+          'type': 'Hibah',
+          if (query != null && query.trim().isNotEmpty) 'search': query.trim(),
+          if (category != null && category.isNotEmpty && category != 'Semua')
+            'category': category,
+        },
+      );
+      final data = ApiClient.unwrap(response);
+      final list = data is List ? data : const [];
+      return list
+          .map((e) => SocialGrant.fromJson(Map<String, dynamic>.from(e as Map)))
+          .where(
+            (g) =>
+                g.status == 'Available' &&
+                (excludeOwnerId == null ||
+                    excludeOwnerId.isEmpty ||
+                    g.ownerUserId != excludeOwnerId),
+          )
+          .toList();
+    }
 
     return _seedGrants.where((item) {
       if (item.status != 'Available') return false;
@@ -94,6 +124,15 @@ class SocialGrantService {
   }
 
   Future<List<SocialGrant>> fetchDonorGrants(String ownerUserId) async {
+    if (await _isLoggedIn()) {
+      final response = await _apiClient.get('/items/me', query: {'type': 'Hibah'});
+      final data = ApiClient.unwrap(response);
+      final list = data is List ? data : const [];
+      return list
+          .map((e) => SocialGrant.fromJson(Map<String, dynamic>.from(e as Map)))
+          .where((g) => g.listingType == 'Hibah')
+          .toList();
+    }
     return _seedGrants
         .where((item) => item.ownerUserId == ownerUserId || ownerUserId.isEmpty)
         .toList();

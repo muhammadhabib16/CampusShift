@@ -10,10 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('formatRupiah', () {
     test('memformat ribuan dengan titik', () {
-      expect(formatRupiah(195000), 'Rp 195.000');
-      expect(formatRupiah(45000), 'Rp 45.000');
-      expect(formatRupiah(1250000), 'Rp 1.250.000');
-      expect(formatRupiah(0), 'Rp 0');
+      expect(formatRupiah(195000), 'Rp195.000');
+      expect(formatRupiah(45000), 'Rp45.000');
+      expect(formatRupiah(1250000), 'Rp1.250.000');
+      expect(formatRupiah(0), 'Rp0');
     });
   });
 
@@ -91,7 +91,7 @@ void main() {
 
   group('HomeViewModel', () {
     test('memuat barang terbaru dari service', () async {
-      final viewModel = HomeViewModel(HomeService(fetchItems: () async => []));
+      final viewModel = HomeViewModel(HomeService(fetchItems: () async => [], isOnline: () async => false));
       await viewModel.loadLatestListings();
       expect(viewModel.latestListings.length, 5);
       expect(viewModel.isLoading, isFalse);

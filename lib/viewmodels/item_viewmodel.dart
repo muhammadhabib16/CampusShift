@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import '../models/item_model.dart';
 import '../services/item_service.dart';
 import '../services/notification_service.dart';
+import '../utils/error_message.dart';
 
 class ItemViewModel extends ChangeNotifier {
+  static const double defaultMaxPrice = 500000;
+
   List<ItemModel> _catalogItems = [];
   List<ItemModel> _myItems = [];
   bool _isLoading = false;
@@ -16,12 +19,13 @@ class ItemViewModel extends ChangeNotifier {
   String _selectedCategory = 'Semua Kategori';
   String _selectedType = 'Semua Transaksi';
   double _minPrice = 0;
-  double _maxPrice = 250000;
+  double _maxPrice = defaultMaxPrice;
 
   List<ItemModel> get catalogItems => _catalogItems;
   List<ItemModel> get myItems => _myItems;
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
+  String get searchQuery => _searchQuery;
   String get selectedCategory => _selectedCategory;
   String get selectedType => _selectedType;
   double get minPrice => _minPrice;
@@ -33,20 +37,53 @@ class ItemViewModel extends ChangeNotifier {
     _errorMessage = '';
     notifyListeners();
     try {
-      // Backend sudah menangani seluruh logic filter (termasuk harga 0 untuk hibah)
-      _catalogItems = await ItemService.getCatalog(
+      final items = await ItemService.getCatalog(
         search: _searchQuery,
         category: _selectedCategory,
         type: _selectedType,
         minPrice: _minPrice,
         maxPrice: _maxPrice,
       );
+
+      _catalogItems = items.where(_matchesFilter).toList();
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  bool _matchesFilter(ItemModel item) {
+    if (_selectedCategory != 'Semua Kategori' &&
+        item.category != _selectedCategory) {
+      return false;
+    }
+
+    if (_selectedType == 'Jual (COD Tunai)' && item.listingType != 'Jual') {
+      return false;
+    }
+    if (_selectedType == 'Hibah (Rp0 Gratis)' && item.listingType != 'Hibah') {
+      return false;
+    }
+    if (_selectedType == 'Terbuka Barter' && !item.isBarterOpen) {
+      return false;
+    }
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      final matchTitle = item.title.toLowerCase().contains(q);
+      final matchDesc = item.description.toLowerCase().contains(q);
+      if (!matchTitle && !matchDesc) return false;
+    }
+
+    // Barang Hibah selalu gratis (Rp 0), sehingga lolos filter batas harga
+    if (item.listingType == 'Hibah') return true;
+
+    if (_maxPrice < defaultMaxPrice && item.price > _maxPrice) {
+      return false;
+    }
+    return item.price >= _minPrice;
   }
 
   void updateFilter({
@@ -64,18 +101,21 @@ class ItemViewModel extends ChangeNotifier {
     fetchCatalog();
   }
 
-  void resetFilter() {
+  /// Mengembalikan semua filter ke bawaan. [category] opsional dipakai saat
+  /// membuka Katalog dari kartu Kategori Populer di Beranda.
+  void resetFilter({String category = 'Semua Kategori'}) {
     _searchQuery = '';
-    _selectedCategory = 'Semua Kategori';
+    _selectedCategory = category;
     _selectedType = 'Semua Transaksi';
     _minPrice = 0;
-    _maxPrice = 250000;
+    _maxPrice = defaultMaxPrice;
     fetchCatalog();
   }
 
   // TAMBAH LISTING
   Future<bool> addListing(Map<String, dynamic> data, List<File> images) async {
     _isLoading = true;
+    _errorMessage = '';
     notifyListeners();
     bool success = false;
     try {
@@ -83,11 +123,9 @@ class ItemViewModel extends ChangeNotifier {
       if (success) {
         await fetchCatalog();
         await fetchMyItems();
-        // --- TRIGGER NOTIFIKASI SIMULASI FR-05 ---
-        NotificationService.scheduleStaleListingAlert(data['judul']);
       }
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -98,11 +136,15 @@ class ItemViewModel extends ChangeNotifier {
   // FETCH BARANG SAYA
   Future<void> fetchMyItems() async {
     _isLoading = true;
+    _errorMessage = '';
     notifyListeners();
     try {
       _myItems = await ItemService.getMyItems();
+      // FR-05: Stale Alert untuk listing Available yang 14 hari tidak
+      // disunting (berbasis sinkronisasi saat data dimuat).
+      NotificationService.checkStaleListings(_myItems);
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -110,8 +152,9 @@ class ItemViewModel extends ChangeNotifier {
   }
 
   // UBAH STATUS (ARSIPKAN / AKTIFKAN)
-  Future<void> changeItemStatus(String id, String newStatus) async {
+  Future<bool> changeItemStatus(String id, String newStatus) async {
     _isLoading = true;
+    _errorMessage = '';
     notifyListeners();
     try {
       if (newStatus == 'Archived') {
@@ -119,12 +162,12 @@ class ItemViewModel extends ChangeNotifier {
       } else if (newStatus == 'Available') {
         await ItemService.activateListing(id);
       }
-      // Ambil data terbaru dari server setelah berhasil diubah
       await fetchMyItems();
       await fetchCatalog();
+      return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
+      _errorMessage = errorMessageOf(e);
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -132,17 +175,18 @@ class ItemViewModel extends ChangeNotifier {
   }
 
   // HAPUS PERMANEN
-  Future<void> deleteMyItem(String id) async {
+  Future<bool> deleteMyItem(String id) async {
     _isLoading = true;
+    _errorMessage = '';
     notifyListeners();
     try {
       await ItemService.deleteListing(id);
-      // Ambil data terbaru dari server setelah berhasil dihapus
       await fetchMyItems();
       await fetchCatalog();
+      return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
+      _errorMessage = errorMessageOf(e);
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -156,6 +200,7 @@ class ItemViewModel extends ChangeNotifier {
     List<File> images,
   ) async {
     _isLoading = true;
+    _errorMessage = '';
     notifyListeners();
     bool success = false;
     try {
@@ -165,7 +210,7 @@ class ItemViewModel extends ChangeNotifier {
         await fetchMyItems();
       }
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
     } finally {
       _isLoading = false;
       notifyListeners();

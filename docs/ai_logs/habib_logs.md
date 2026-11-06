@@ -37,3 +37,46 @@ Log ini digunakan untuk mencatat setiap penggunaan AI (ChatGPT, Gemini, Copilot,
   3. `docs/TEAM_GUIDELINES.md`: aturan status barang hanya diubah server dan aturan jenis pemicu notifikasi.
 - **Perubahan yang dilakukan:** (diisi setelah review tim — misalnya penyesuaian nama kampus pilot, stack backend final, atau pembagian tugas yang disepakati)
 - **Proses verifikasi/testing:** Membandingkan setiap poin umpan balik dosen dengan tabel "Tindak Lanjut Umpan Balik Dosen" di PRD, memastikan setiap anggota tetap memiliki ≥ 4 fungsionalitas, 1 entitas CRUD, dan 1 notifikasi, serta memeriksa ulang tanggal setiap bar pada Gantt chart timeline v4.
+
+---
+
+## Log #4
+- **Tanggal:** 2026-11-06
+- **Tujuan penggunaan AI:** Mendiagnosis error "Titik temu resmi belum tersedia di server" saat mengajukan pertemuan COD (Modul 2).
+- **Prompt/instruction yang digunakan:** Screenshot layar "Ajukan Pertemuan COD" dengan SnackBar error, disertai pesan "muncul error seperti berikut".
+- **Output atau solusi yang dihasilkan:** AI menelusuri asal pesan ke `MeetupRepository.refresh()` (`lib/services/meetup_repository.dart`) dan menemukan bahwa `GET /safe-meet-points` di server produksi mengembalikan daftar kosong. Akar masalahnya ada di backend: tabel `SafeMeetPoint` belum di-seed karena `Dockerfile` hanya menjalankan `npm start`. Solusinya adalah menjalankan `docker exec campusshift-api npx prisma db seed` di homeserver (seed memakai `upsert` sehingga aman diulang).
+- **Perubahan yang dilakukan:** Tidak ada perubahan kode pada langkah ini; perbaikan dilakukan dengan menjalankan seed di server.
+- **Proses verifikasi/testing:** Mengecek endpoint produksi dengan `curl` (membutuhkan token, sehingga verifikasi akhir dilakukan dari aplikasi setelah seed dijalankan) dan memastikan format respons `{ success, data: [...] }` sudah sesuai dengan parser `Backend.list()`.
+
+---
+
+## Log #5
+- **Tanggal:** 2026-11-06
+- **Tujuan penggunaan AI:** Merapikan `.gitignore`, menambahkan ikon lonceng notifikasi di app bar, dan memperbaiki tampilan aplikasi yang masih salah atau membingungkan.
+- **Prompt/instruction yang digunakan:** "coba update git ignore dll, serta tambahkan icon bell notifikasi di app bar serta perbaiki tampilan aplikasi yang masih salah atau membingungkan."
+- **Output atau solusi yang dihasilkan:**
+  1. `.gitignore` Flutter ditambah aturan untuk `android/app/.cxx/`, FVM, file sisa merge (`*.orig`, `*.rej`, `*.bak`), dan folder `lib_backup_*/`; folder backup dikecualikan dari `analysis_options.yaml`. `.gitignore` dan `.dockerignore` backend juga diperbarui.
+  2. Fitur notifikasi dalam aplikasi: `NotificationCenter` (`lib/services/notification_center.dart`) yang memanggil `GET /sync` setiap 60 detik dan mengubah perubahan status pertemuan, barter, serta klaim hibah dari pihak lain menjadi notifikasi. Status "sudah dibaca" disimpan per akun di SharedPreferences. Ditambah `NotificationBell` (ikon lonceng dengan badge jumlah belum dibaca) di app bar keempat tab dan layar `NotificationsScreen`.
+  3. Perbaikan UI: menghapus ±115 kode spesifikasi PRD (BR-xx, FR-xx, AC-xx, N-xx) dari teks yang tampil ke pengguna, mengganti istilah teknis ("Token", "immutable", "npx prisma db seed", "Modul 2/4") dengan bahasa yang mudah dipahami, memperbaiki `StepBanner` agar judul tidak terpotong, mencegah overflow di form pertemuan, serta memperjelas nama menu di halaman Profil.
+- **Perubahan yang dilakukan:** Menyesuaikan dua test yang mencari teks lama (`handover_test.dart`, `home_screen_widget_test.dart`) dan menambahkan `ensureVisible` pada `barter_flow_widget_test.dart` karena banner langkah menjadi sedikit lebih tinggi. Folder `lib_backup_racha/` yang sudah terlanjur ter-commit perlu dilepas manual dengan `git rm -r --cached lib_backup_racha` setelah disepakati tim.
+- **Proses verifikasi/testing:** Menjalankan `flutter analyze` (tidak ada issue) dan `flutter test` (50 test lulus), lalu mengecek ikon lonceng dan tampilan baru langsung di perangkat Android.
+
+---
+
+## Log #6
+- **Tanggal:** 2026-11-06
+- **Tujuan penggunaan AI:** Memperbaiki gambar produk yang tidak muncul pada bagian "Barang Terbaru" di Beranda.
+- **Prompt/instruction yang digunakan:** Screenshot Beranda dengan kartu barang yang hanya berisi ikon, disertai pertanyaan "kenapa gambar produk tidak muncul di barang terbaru".
+- **Output atau solusi yang dihasilkan:** AI menemukan bahwa model `ListingSummary` tidak menyimpan URL foto sama sekali, sehingga kartu Beranda hanya menampilkan ikon kategori (berbeda dengan Katalog yang memakai `photoUrls`). Solusinya: menambahkan field `photoUrl` (foto pertama barang) pada `lib/models/listing_summary.dart` dan menampilkannya dengan `Image.network` di `_buildProductCard` (`lib/views/home_screen.dart`), dengan ikon kategori sebagai fallback saat foto dimuat, gagal dimuat, atau kosong.
+- **Perubahan yang dilakukan:** Memastikan URL foto dari backend sudah absolut (dibentuk oleh `toPublicUrl` dari `PUBLIC_BASE_URL`), sehingga variabel tersebut perlu diisi dengan domain publik di `.env` server agar foto dapat diakses dari HP.
+- **Proses verifikasi/testing:** `flutter analyze` dan `flutter test` (50 test lulus), kemudian memeriksa kartu "Barang Terbaru" di perangkat setelah build ulang.
+
+---
+
+## Log #7
+- **Tanggal:** 2026-11-06
+- **Tujuan penggunaan AI:** Memperbaiki error "RIGHT OVERFLOWED BY 20 PIXELS" pada kartu profil (baris Skor Reputasi).
+- **Prompt/instruction yang digunakan:** Screenshot halaman Profil dengan garis kuning-hitam overflow, disertai pertanyaan "apa penyebab overflow ini".
+- **Output atau solusi yang dihasilkan:** AI menjelaskan bahwa `Row` berisi teks "Skor Reputasi Mahasiswa" dan widget `RatingStars` ("Belum ada ulasan") tanpa `Expanded`/`Flexible`, sehingga tidak bisa menyusut ketika ukuran font sistem HP besar. Solusinya: label dibungkus `Expanded` dan dipersingkat menjadi "Skor Reputasi", `RatingStars` dibungkus `Flexible`, dan teks di dalam `RatingStars` (`lib/shared/widgets/user_avatar.dart`) diberi `Flexible` + `TextOverflow.ellipsis`.
+- **Perubahan yang dilakukan:** Memastikan `RatingStars` hanya dipakai di halaman Profil (yang sudah dibungkus `Flexible`), sehingga perubahan tidak memicu error layout di layar lain.
+- **Proses verifikasi/testing:** `flutter analyze` dan `flutter test` (50 test lulus), lalu membuka halaman Profil di HP dengan ukuran font sistem besar untuk memastikan overflow sudah hilang.

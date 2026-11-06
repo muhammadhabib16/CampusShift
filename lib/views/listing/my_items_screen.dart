@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 
+import '../../core/app_strings.dart';
 import '../../models/item_model.dart';
+import '../../shared/widgets/shared_widgets.dart';
+import '../../theme/app_tokens.dart';
 import '../../viewmodels/item_viewmodel.dart';
+import 'add_listing_screen.dart';
 import 'edit_listing_screen.dart';
+import 'item_detail_screen.dart';
 
 class MyItemsScreen extends StatefulWidget {
   const MyItemsScreen({super.key});
@@ -22,7 +26,7 @@ class _MyItemsScreenState extends State<MyItemsScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ItemViewModel>(context, listen: false).fetchMyItems();
+      context.read<ItemViewModel>().fetchMyItems();
     });
   }
 
@@ -32,25 +36,89 @@ class _MyItemsScreenState extends State<MyItemsScreen>
     super.dispose();
   }
 
+  Future<void> _handleChangeStatus(
+    ItemModel item,
+    String targetStatus,
+  ) async {
+    final viewModel = context.read<ItemViewModel>();
+    final success = await viewModel.changeItemStatus(item.id, targetStatus);
+    if (!mounted) return;
+
+    if (success) {
+      AppSnackBar.showSuccess(
+        context,
+        targetStatus == 'Archived'
+            ? 'Listing berhasil diarsipkan.'
+            : 'Listing berhasil diaktifkan kembali.',
+      );
+    } else {
+      AppSnackBar.showError(
+        context,
+        viewModel.errorMessage.isNotEmpty
+            ? viewModel.errorMessage
+            : 'Gagal mengubah status listing.',
+      );
+    }
+  }
+
+  Future<void> _handleDelete(ItemModel item) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Hapus Listing Permanen?',
+      message:
+          'Listing "${item.title}" akan dihapus secara permanen dan tidak dapat dikembalikan.',
+      confirmLabel: 'Ya, Hapus',
+      cancelLabel: AppStrings.cancel,
+      destructive: true,
+      confirmIcon: Icons.delete_outline,
+    );
+
+    if (!confirmed || !mounted) return;
+
+    final viewModel = context.read<ItemViewModel>();
+    final success = await viewModel.deleteMyItem(item.id);
+    if (!mounted) return;
+
+    if (success) {
+      AppSnackBar.showSuccess(context, 'Listing berhasil dihapus.');
+    } else {
+      AppSnackBar.showError(
+        context,
+        viewModel.errorMessage.isNotEmpty
+            ? viewModel.errorMessage
+            : 'Gagal menghapus listing.',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<ItemViewModel>(context);
+    final viewModel = context.watch<ItemViewModel>();
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Barang Saya',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: AppColors.textPrimary,
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF0D9488),
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xFF0D9488),
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          indicatorColor: AppColors.primary,
+          indicatorWeight: 3,
           isScrollable: true,
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
           tabs: const [
             Tab(text: 'Tersedia'),
             Tab(text: 'Dipesan'),
@@ -60,7 +128,12 @@ class _MyItemsScreenState extends State<MyItemsScreen>
         ),
       ),
       body: viewModel.isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingState(label: 'Memuat daftar barang Anda…')
+          : viewModel.errorMessage.isNotEmpty && viewModel.myItems.isEmpty
+          ? ErrorState(
+              message: viewModel.errorMessage,
+              onRetry: viewModel.fetchMyItems,
+            )
           : TabBarView(
               controller: _tabController,
               children: [
@@ -91,63 +164,87 @@ class _MyItemsScreenState extends State<MyItemsScreen>
 
   Widget _buildItemList(List<ItemModel> items) {
     if (items.isEmpty) {
-      return const Center(
-        child: Text(
-          'Belum ada barang di kategori ini.',
-          style: TextStyle(color: Colors.grey),
-        ),
+      return EmptyState(
+        title: 'Belum Ada Barang di Kategori Ini',
+        description:
+            'Pasang listing barang kuliah atau kos yang sudah tidak terpakai agar bermanfaat bagi rekan mahasiswa.',
+        actionLabel: 'Pasang Listing',
+        onAction: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddListingScreen()),
+          );
+        },
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        return _buildItemCard(context, items[index]);
-      },
+
+    return RefreshIndicator(
+      onRefresh: () => context.read<ItemViewModel>().fetchMyItems(),
+      color: AppColors.primary,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+        itemBuilder: (context, index) => _buildItemCard(context, items[index]),
+      ),
     );
   }
 
   Widget _buildItemCard(BuildContext context, ItemModel item) {
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'id',
-      symbol: 'Rp ',
-      decimalDigits: 0,
-    );
-    final viewModel = Provider.of<ItemViewModel>(context, listen: false);
-
-    // CEK ATURAN BR-04: Edit dan Hapus hanya boleh jika statusnya Available atau Archived
-    bool canEditOrDelete =
+    // Aturan BR-04: Edit dan Hapus hanya boleh jika statusnya Available atau Archived
+    final canEditOrDelete =
         item.status == 'Available' || item.status == 'Archived';
+    final isGrant = item.listingType == 'Hibah';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      clipBehavior: Clip.antiAlias,
+    return AppCard(
+      padding: EdgeInsets.zero,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item)),
+        );
+      },
       child: Column(
         children: [
-          Row(
-            children: [
-              Image.network(
-                item.photoUrls.isNotEmpty
-                    ? item.photoUrls.first
-                    : 'https://via.placeholder.com/150',
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: AppRadius.small,
+                  child: SizedBox(
+                    width: 84,
+                    height: 84,
+                    child: item.photoUrls.isNotEmpty
+                        ? Image.network(
+                            item.photoUrls.first,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _buildPlaceholderImage(),
+                          )
+                        : _buildPlaceholderImage(),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.category,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              item.category,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          StatusBadge(status: item.status, compact: true),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -155,121 +252,105 @@ class _MyItemsScreenState extends State<MyItemsScreen>
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                           fontSize: 14,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.listingType == 'Hibah'
-                            ? 'Hibah Gratis'
-                            : currencyFormatter.format(item.price),
-                        style: const TextStyle(
-                          color: Color(0xFF0D9488),
-                          fontWeight: FontWeight.bold,
-                        ),
+                      const SizedBox(height: 6),
+                      PriceTag(
+                        price: item.price,
+                        isGrant: isGrant,
+                        fontSize: 14,
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           // Render Row Aksi hanya jika barang BUKAN berstatus Reserved atau Completed (Sesuai BR-04)
           if (canEditOrDelete) ...[
-            const Divider(height: 1),
+            const Divider(height: 1, color: AppColors.outline),
             Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: 4.0,
-                vertical: 4.0,
+                horizontal: AppSpacing.xs,
+                vertical: 2,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Tombol Hapus (Sesuai BR-04)
                   TextButton.icon(
-                    onPressed: () =>
-                        _showDeleteDialog(context, viewModel, item.id),
+                    onPressed: () => _handleDelete(item),
                     icon: const Icon(
                       Icons.delete_outline,
-                      color: Colors.red,
+                      color: AppColors.error,
                       size: 16,
                     ),
                     label: const Text(
                       'Hapus',
-                      style: TextStyle(color: Colors.red, fontSize: 12),
+                      style: TextStyle(color: AppColors.error, fontSize: 12),
                     ),
                   ),
-
-                  // Tombol Arsipkan / Aktifkan
                   if (item.status == 'Available')
                     TextButton.icon(
-                      onPressed: () {
-                        viewModel.changeItemStatus(item.id, 'Archived');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Listing diarsipkan.')),
-                        );
-                      },
+                      onPressed: () => _handleChangeStatus(item, 'Archived'),
                       icon: const Icon(
                         Icons.archive_outlined,
-                        color: Colors.orange,
+                        color: AppColors.warning,
                         size: 16,
                       ),
                       label: const Text(
                         'Arsipkan',
-                        style: TextStyle(color: Colors.orange, fontSize: 12),
+                        style: TextStyle(
+                          color: AppColors.warning,
+                          fontSize: 12,
+                        ),
                       ),
                     )
                   else if (item.status == 'Archived')
                     TextButton.icon(
-                      onPressed: () {
-                        viewModel.changeItemStatus(item.id, 'Available');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Listing diaktifkan kembali.'),
-                          ),
-                        );
-                      },
+                      onPressed: () => _handleChangeStatus(item, 'Available'),
                       icon: const Icon(
                         Icons.unarchive_outlined,
-                        color: Colors.green,
+                        color: AppColors.success,
                         size: 16,
                       ),
                       label: const Text(
                         'Aktifkan',
-                        style: TextStyle(color: Colors.green, fontSize: 12),
+                        style: TextStyle(
+                          color: AppColors.success,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-
-                  // Tombol Edit (Sesuai BR-04)
                   TextButton.icon(
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => EditListingScreen(item: item),
+                          builder: (_) => EditListingScreen(item: item),
                         ),
                       );
                     },
                     icon: const Icon(
                       Icons.edit_outlined,
-                      color: Colors.blue,
+                      color: AppColors.primary,
                       size: 16,
                     ),
                     label: const Text(
                       'Edit',
-                      style: TextStyle(color: Colors.blue, fontSize: 12),
+                      style: TextStyle(color: AppColors.primary, fontSize: 12),
                     ),
                   ),
                 ],
               ),
             ),
           ] else ...[
-            // Tampilan info tanpa tombol aksi untuk barang Reserved/Completed
-            const Divider(height: 1),
+            const Divider(height: 1, color: AppColors.outline),
             Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Center(
                 child: Text(
                   item.status == 'Reserved'
@@ -278,8 +359,9 @@ class _MyItemsScreenState extends State<MyItemsScreen>
                   style: const TextStyle(
                     fontSize: 12,
                     fontStyle: FontStyle.italic,
-                    color: Colors.grey,
+                    color: AppColors.textSecondary,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -289,38 +371,15 @@ class _MyItemsScreenState extends State<MyItemsScreen>
     );
   }
 
-  void _showDeleteDialog(
-    BuildContext context,
-    ItemViewModel viewModel,
-    String itemId,
-  ) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Permanen?'),
-        content: const Text(
-          'Listing ini akan dihapus secara permanen dan tidak dapat dikembalikan.',
+  Widget _buildPlaceholderImage() {
+    return Container(
+      color: AppColors.surfaceVariant,
+      child: const Center(
+        child: Icon(
+          Icons.inventory_2_outlined,
+          size: 32,
+          color: AppColors.textSecondary,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              viewModel.deleteMyItem(itemId);
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Listing berhasil dihapus.')),
-              );
-            },
-            child: const Text(
-              'Ya, Hapus',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
     );
   }

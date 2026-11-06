@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/grant_claim.dart';
 import '../services/grant_claim_service.dart';
 import '../services/grant_notification_service.dart';
+import '../utils/error_message.dart';
 
 class GrantClaimViewModel extends ChangeNotifier {
   final GrantClaimService _service = GrantClaimService();
@@ -65,7 +66,7 @@ class GrantClaimViewModel extends ChangeNotifier {
         _pendingNotifications.addAll(alerts);
       }
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -98,7 +99,7 @@ class GrantClaimViewModel extends ChangeNotifier {
       await syncClaims();
       return created;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
       _isLoading = false;
       notifyListeners();
       return null;
@@ -123,7 +124,7 @@ class GrantClaimViewModel extends ChangeNotifier {
       await syncClaims();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -140,7 +141,7 @@ class GrantClaimViewModel extends ChangeNotifier {
       await syncClaims();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -158,7 +159,7 @@ class GrantClaimViewModel extends ChangeNotifier {
       await syncClaims();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -173,12 +174,12 @@ class GrantClaimViewModel extends ChangeNotifier {
     try {
       final approved = await _service.approveClaim(claimId);
       _pendingNotifications.add(
-        'N-06: Klaim ${approved.itemTitle} milik ${approved.applicantName} disetujui. Klaim lain otomatis Rejected & barang menjadi Reserved.',
+        'Klaim ${approved.itemTitle} milik ${approved.applicantName} disetujui. Klaim lain otomatis Rejected & barang menjadi Reserved.',
       );
       await syncClaims();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -193,12 +194,12 @@ class GrantClaimViewModel extends ChangeNotifier {
     try {
       final rejected = await _service.rejectClaim(claimId, reason: reason);
       _pendingNotifications.add(
-        'N-06: Klaim ${rejected.applicantName} untuk ${rejected.itemTitle} telah ditolak.',
+        'Klaim ${rejected.applicantName} untuk ${rejected.itemTitle} telah ditolak.',
       );
       await syncClaims();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _errorMessage = errorMessageOf(e);
       _isLoading = false;
       notifyListeners();
       return false;

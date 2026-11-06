@@ -29,6 +29,7 @@ class BarterListScreen extends StatelessWidget {
               color: AppColors.textPrimary,
             ),
           ),
+          actions: const [NotificationBell()],
           bottom: const TabBar(
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
@@ -104,8 +105,9 @@ class _BarterList extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    data.partnerName,
+                  UserLink(
+                    userId: data.partnerUserId,
+                    name: data.partnerName,
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,

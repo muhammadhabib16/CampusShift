@@ -7,8 +7,11 @@ import '../../services/meetup_repository.dart';
 import '../../shared/widgets/shared_widgets.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/formatters.dart';
+import '../handover/qr_scanner_screen.dart';
+import '../handover/serah_terima_qr_screen.dart';
 import 'meetup_detail_screen.dart';
 import 'meetup_form_screen.dart';
+import '../../utils/error_message.dart';
 
 class MyMeetupsScreen extends StatefulWidget {
   const MyMeetupsScreen({super.key});
@@ -28,40 +31,67 @@ class _MyMeetupsScreenState extends State<MyMeetupsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _repository.addListener(_refresh);
+    _repository.refresh();
   }
 
   @override
   void dispose() {
+    _repository.removeListener(_refresh);
     _tabController.dispose();
     super.dispose();
   }
 
   void _refresh() {
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _handleDelete(Meetup meetup) async {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Hapus Ajakan Pertemuan?',
-      message: 'Ajakan yang masih Diajukan akan dihapus secara permanen dan hilang dari daftar kedua pihak (Aturan BR-13 & AC-11).',
+      message:
+          'Ajakan yang masih Diajukan akan dihapus secara permanen dan hilang dari daftar kedua pihak.',
       confirmLabel: 'Hapus Permanen',
       cancelLabel: AppStrings.cancel,
       destructive: true,
       confirmIcon: Icons.delete_outline,
     );
 
-    if (confirmed) {
+    if (!confirmed) return;
+    try {
       final success = await _repository.deleteMeetup(meetup.id);
-      if (mounted) {
-        if (success) {
-          AppSnackBar.showSuccess(
-            context,
-            'Ajakan pertemuan berhasil dihapus permanen (AC-11).',
-          );
-          _refresh();
-        }
-      }
+      if (!mounted || !success) return;
+      AppSnackBar.showSuccess(
+        context,
+        'Ajakan pertemuan berhasil dihapus permanen.',
+      );
+      _refresh();
+    } catch (e) {
+      if (mounted) AppSnackBar.showError(context, errorMessageOf(e));
+    }
+  }
+
+  /// FR-08: Pemilik menolak ajakan (status Ditolak).
+  Future<void> _handleReject(Meetup meetup) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Tolak Ajakan Pertemuan?',
+      message:
+          'Ajakan dari ${meetup.requesterName} untuk "${meetup.itemTitle}" akan ditolak.',
+      confirmLabel: 'Tolak Ajakan',
+      cancelLabel: AppStrings.cancel,
+      destructive: true,
+      confirmIcon: Icons.block,
+    );
+    if (!confirmed) return;
+    try {
+      await _repository.rejectMeetup(meetup.id);
+      if (!mounted) return;
+      AppSnackBar.showInfo(context, 'Ajakan pertemuan ditolak.');
+      _refresh();
+    } catch (e) {
+      if (mounted) AppSnackBar.showError(context, errorMessageOf(e));
     }
   }
 
@@ -71,21 +101,25 @@ class _MyMeetupsScreenState extends State<MyMeetupsScreen>
       title: 'Konfirmasi Jadwal Pertemuan?',
       message:
           'Menyetujui pertemuan di ${meetup.safeMeetPoint.name} pada ${meetup.formattedShortDateTime}.\n\n'
-          'Sesuai aturan FR-08 & AC-10, barang akan berstatus "Reserved" dan ajakan pertemuan lain untuk barang ini otomatis Dibatalkan.',
+          'Barang akan berstatus "Reserved" dan ajakan pertemuan lain untuk barang ini otomatis Dibatalkan.',
       confirmLabel: 'Konfirmasi',
       cancelLabel: 'Kembali',
       confirmIcon: Icons.check_circle_outline,
     );
 
-    if (confirmed) {
+    if (!confirmed) return;
+    try {
       await _repository.confirmMeetup(meetup.id);
-      if (mounted) {
-        AppSnackBar.showSuccess(
-          context,
-          'Pertemuan Dikonfirmasi! Status barang menjadi Reserved (AC-10).',
-        );
-        _refresh();
-      }
+      if (!mounted) return;
+      AppSnackBar.showSuccess(
+        context,
+        meetup.itemType == 'Jual'
+            ? 'Pertemuan Dikonfirmasi! Status barang menjadi Reserved.'
+            : 'Pertemuan Dikonfirmasi!',
+      );
+      _refresh();
+    } catch (e) {
+      if (mounted) AppSnackBar.showError(context, errorMessageOf(e));
     }
   }
 
@@ -93,25 +127,31 @@ class _MyMeetupsScreenState extends State<MyMeetupsScreen>
     final confirmed = await showConfirmDialog(
       context,
       title: 'Batalkan Pertemuan?',
-      message: 'Membatalkan pertemuan yang telah dikonfirmasi akan mengembalikan status barang menjadi "Available" (Aturan BR-10).',
+      message: meetup.itemType == 'Jual'
+          ? 'Membatalkan pertemuan yang telah dikonfirmasi akan mengembalikan status barang menjadi "Available".'
+          : 'Pertemuan dibatalkan; kesepakatan ${meetup.itemType} tetap berlaku dan kamu dapat mengajukan jadwal baru.',
       confirmLabel: 'Batalkan Pertemuan',
       cancelLabel: 'Tutup',
       destructive: true,
       confirmIcon: Icons.cancel_outlined,
     );
 
-    if (confirmed) {
+    if (!confirmed) return;
+    try {
       await _repository.cancelMeetup(
         meetup.id,
         reason: 'Dibatalkan oleh pengguna dari daftar pertemuan',
       );
-      if (mounted) {
-        AppSnackBar.showInfo(
-          context,
-          'Pertemuan dibatalkan. Status barang kembali "Available" (BR-10).',
-        );
-        _refresh();
-      }
+      if (!mounted) return;
+      AppSnackBar.showInfo(
+        context,
+        meetup.itemType == 'Jual'
+            ? 'Pertemuan dibatalkan. Status barang kembali "Available".'
+            : 'Pertemuan dibatalkan.',
+      );
+      _refresh();
+    } catch (e) {
+      if (mounted) AppSnackBar.showError(context, errorMessageOf(e));
     }
   }
 
@@ -194,7 +234,7 @@ class _MyMeetupsScreenState extends State<MyMeetupsScreen>
     if (filterStatus != null) {
       if (includeCancelled) {
         list = list
-            .where((m) => m.status == 'Selesai' || m.status == 'Dibatalkan')
+            .where((m) => m.isSelesai || m.isDibatalkan || m.isDitolak)
             .toList();
       } else {
         list = list.where((m) => m.status == filterStatus).toList();
@@ -261,8 +301,10 @@ class _MyMeetupsScreenState extends State<MyMeetupsScreen>
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Partner ($partnerRole): $partnerName',
+          UserLink(
+            userId: isOwner ? meetup.requesterId : meetup.ownerId,
+            name: partnerName,
+            prefix: '$partnerRole: ',
             style: const TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,
@@ -338,6 +380,12 @@ class _MyMeetupsScreenState extends State<MyMeetupsScreen>
                     onPressed: () => _handleConfirm(meetup),
                   ),
                 ),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton(
+                  tooltip: 'Tolak Ajakan',
+                  icon: const Icon(Icons.block, color: AppColors.error),
+                  onPressed: () => _handleReject(meetup),
+                ),
               ] else if (meetup.isDiajukan && !isOwner) ...[
                 Expanded(
                   child: AppSecondaryButton(
@@ -370,6 +418,31 @@ class _MyMeetupsScreenState extends State<MyMeetupsScreen>
                   onPressed: () => _handleDelete(meetup),
                 ),
               ] else if (meetup.isDikonfirmasi) ...[
+                Expanded(
+                  child: AppPrimaryButton(
+                    label: 'QR Serah Terima',
+                    icon: Icons.qr_code_2_rounded,
+                    onPressed: () {
+                      if (isOwner) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SerahTerimaQrScreen(meetup: meetup),
+                          ),
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                QrScannerScreen(targetMeetup: meetup),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
                 IconButton(
                   tooltip: 'Batalkan Pertemuan',
                   icon: const Icon(

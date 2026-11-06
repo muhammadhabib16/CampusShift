@@ -1,12 +1,12 @@
 import '../models/barter_deal.dart';
 import '../models/barter_item.dart';
+import 'backend.dart';
+import 'item_service.dart';
 
-/// Sumber data Modul 3 (Barter).
+/// Sumber data Modul 3 (Barter) — `be-campusshift/src/routes/barter.routes.js`.
 ///
-/// SEMENTARA masih memakai data contoh karena API Barter Deals belum tersedia.
-/// Saat backend siap, isi method di bawah cukup diganti dengan pemanggilan
-/// REST API (header `Authorization: Bearer <token>`), tanpa mengubah
-/// ViewModel maupun View.
+/// Saat pengguna login, semua data dibaca/ditulis ke `/api/barters`.
+/// Data contoh di bawah hanya dipakai pada mode tanpa login (demo & widget test).
 class BarterService {
   static const BarterItem _calculator = BarterItem(
     id: 'item-1',
@@ -107,32 +107,126 @@ class BarterService {
   ];
 
   /// Barang milik pengguna yang berstatus Available (BR-14).
-  Future<List<BarterItem>> getMyActiveItems() async => List.of(_myActiveItems);
+  /// Mode server: listing Jual milik sendiri yang Available (`GET /items/me`).
+  Future<List<BarterItem>> getMyActiveItems() async {
+    if (await Backend.isOnline()) {
+      final items = await ItemService.getMyItems();
+      return items
+          .where((i) => i.status == 'Available' && i.listingType == 'Jual')
+          .map(
+            (i) => BarterItem(
+              id: i.id,
+              name: i.title,
+              price: i.price,
+              category: i.category,
+              condition: i.condition,
+              photoUrl: i.photoUrls.isNotEmpty ? i.photoUrls.first : null,
+            ),
+          )
+          .toList();
+    }
+    return List.of(_myActiveItems);
+  }
 
-  /// Barang milik orang lain yang sedang ditawar.
-  Future<BarterItem> getTargetItem() async => _targetItem;
+  /// Barang milik orang lain yang sedang ditawar. Mode server: null — barang
+  /// target ditetapkan dari layar detail barang lewat `setTargetItem`.
+  Future<BarterItem?> getTargetItem() async {
+    if (await Backend.isOnline()) return null;
+    return _targetItem;
+  }
 
   /// Daftar tawaran barter pengguna (dikirim maupun diterima).
-  Future<List<BarterDeal>> getMyDeals() async => List.of(_deals);
+  Future<List<BarterDeal>> getMyDeals() async {
+    if (await Backend.isOnline()) {
+      return Backend.list(await Backend.client.get('/barters/me'))
+          .map(BarterDeal.fromJson)
+          .toList();
+    }
+    return List.of(_deals);
+  }
 
   /// Mengirim tawaran barter (status awal Pending).
+  ///
+  /// BR-16: top-up dibayar Pengaju (Sender) bila barang target lebih mahal,
+  /// selain itu dibayar Penerima (Receiver).
   Future<void> submitProposal({
     required BarterItem offeredItem,
     required BarterItem targetItem,
     required int cashTopUp,
   }) async {
-    // Simulasi waktu tunggu server.
+    if (await Backend.isOnline()) {
+      final senderId = int.tryParse(offeredItem.id);
+      final receiverId = int.tryParse(targetItem.id);
+      if (senderId == null || receiverId == null) {
+        throw Exception('Data barang tidak valid. Muat ulang halaman barang.');
+      }
+      await Backend.client.post(
+        '/barters',
+        body: {
+          'sender_item_id': senderId,
+          'receiver_item_id': receiverId,
+          'cash_top_up': cashTopUp,
+          if (cashTopUp > 0)
+            'top_up_payer': targetItem.price >= offeredItem.price
+                ? 'Sender'
+                : 'Receiver',
+        },
+      );
+      return;
+    }
+    // Mode demo: simulasi waktu tunggu server.
     await Future.delayed(const Duration(seconds: 2));
   }
 
   /// Menekan "Setuju & Kunci Kesepakatan" dari sisi pengguna (dual-confirmation).
   /// Server mengunci kesepakatan bila mitra juga sudah mengonfirmasi.
   Future<BarterDeal> confirmDeal(BarterDeal deal) async {
-    // Simulasi waktu tunggu server.
+    if (await Backend.isOnline()) {
+      return BarterDeal.fromJson(
+        Backend.map(await Backend.client.post('/barters/${deal.id}/confirm')),
+      );
+    }
+    // Mode demo: simulasi waktu tunggu server.
     await Future.delayed(const Duration(seconds: 1));
     return deal.copyWith(
       myConfirmed: true,
       status: deal.partnerConfirmed ? 'Terkunci' : deal.status,
     );
+  }
+
+  /// Penerima menolak tawaran (FR-12).
+  Future<BarterDeal> rejectDeal(BarterDeal deal, {String? reason}) async {
+    if (await Backend.isOnline()) {
+      return BarterDeal.fromJson(
+        Backend.map(
+          await Backend.client.put(
+            '/barters/${deal.id}/reject',
+            body: {'reason': ?reason},
+          ),
+        ),
+      );
+    }
+    return deal.copyWith(status: 'Ditolak');
+  }
+
+  /// Membatalkan tawaran yang sudah ditanggapi / kesepakatan Terkunci.
+  /// Tawaran Pending yang belum ditanggapi ditarik (dihapus) sesuai BR-20.
+  /// Mengembalikan null bila tawaran dihapus.
+  Future<BarterDeal?> cancelDeal(BarterDeal deal, {String? reason}) async {
+    if (await Backend.isOnline()) {
+      if (deal.canDelete == true) {
+        await Backend.client.delete('/barters/${deal.id}');
+        return null;
+      }
+      return BarterDeal.fromJson(
+        Backend.map(
+          await Backend.client.put(
+            '/barters/${deal.id}/cancel',
+            body: {'reason': ?reason},
+          ),
+        ),
+      );
+    }
+    return deal.copyWith(status: 'Dibatalkan');
   }
 }

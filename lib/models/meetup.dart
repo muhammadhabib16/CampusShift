@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 
+import '../utils/formatters.dart';
 import 'safe_meet_point.dart';
 
 class Meetup {
@@ -23,6 +24,8 @@ class Meetup {
   String? cancelledBy;
   String? cancellationReason;
   String itemStatus; // 'Available', 'Reserved', 'Completed'
+  final int? dealId; // jalur Barter (Modul 3)
+  final int? claimId; // jalur Hibah (Modul 5)
 
   Meetup({
     required this.id,
@@ -45,12 +48,15 @@ class Meetup {
     this.cancelledBy,
     this.cancellationReason,
     this.itemStatus = 'Available',
+    this.dealId,
+    this.claimId,
   });
 
   bool get isDiajukan => status == 'Diajukan';
   bool get isDikonfirmasi => status == 'Dikonfirmasi';
   bool get isDibatalkan => status == 'Dibatalkan';
   bool get isSelesai => status == 'Selesai';
+  bool get isDitolak => status == 'Ditolak';
 
   String get formattedDateTime {
     final dateStr = DateFormat(
@@ -97,33 +103,53 @@ class Meetup {
       cancelledBy: cancelledBy ?? this.cancelledBy,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       itemStatus: itemStatus ?? this.itemStatus,
+      dealId: dealId,
+      claimId: claimId,
     );
   }
 
+  /// Membaca `serializeMeetup` dari backend. `item_price` dari server berupa
+  /// angka (Rupiah) sedangkan data lokal menyimpan teks terformat.
   factory Meetup.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic v) => v is int ? v : int.tryParse('${v ?? ''}') ?? 0;
+    int? toIntOrNull(dynamic v) => v == null ? null : int.tryParse('$v');
+    DateTime toLocal(dynamic v) =>
+        (DateTime.tryParse('${v ?? ''}') ?? DateTime.now()).toLocal();
+
+    final rawPrice = json['item_price'];
+    final itemType = json['item_type'] as String? ?? 'Jual';
+    final String price;
+    if (rawPrice is num) {
+      price = itemType == 'Hibah' ? 'Gratis (Hibah)' : formatRupiah(rawPrice.toInt());
+    } else {
+      price = rawPrice as String? ?? 'Rp0';
+    }
+
     return Meetup(
-      id: json['id'] as int,
-      itemId: json['item_id'] as int,
+      id: toInt(json['id']),
+      itemId: toInt(json['item_id']),
       itemTitle: json['item_title'] as String? ?? 'Barang Kuliah',
       itemCategory: json['item_category'] as String? ?? 'Akademik',
-      itemPrice: json['item_price'] as String? ?? 'Rp 0',
-      itemType: json['item_type'] as String? ?? 'Jual',
-      requesterId: json['requester_id'] as int,
+      itemPrice: price,
+      itemType: itemType,
+      requesterId: toInt(json['requester_id']),
       requesterName: json['requester_name'] as String? ?? 'Peminat',
       requesterNim: json['requester_nim'] as String? ?? '',
-      ownerId: json['owner_id'] as int,
+      ownerId: toInt(json['owner_id']),
       ownerName: json['owner_name'] as String? ?? 'Pemilik Barang',
       ownerNim: json['owner_nim'] as String? ?? '',
       safeMeetPoint: SafeMeetPoint.fromJson(
-        json['safe_meet_point'] as Map<String, dynamic>,
+        Map<String, dynamic>.from(json['safe_meet_point'] as Map),
       ),
-      scheduledTime: DateTime.parse(json['scheduled_time'] as String),
+      scheduledTime: toLocal(json['scheduled_time']),
       notes: json['notes'] as String? ?? '',
       status: json['status'] as String? ?? 'Diajukan',
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: toLocal(json['created_at']),
       cancelledBy: json['cancelled_by'] as String?,
       cancellationReason: json['cancellation_reason'] as String?,
       itemStatus: json['item_status'] as String? ?? 'Available',
+      dealId: toIntOrNull(json['deal_id']),
+      claimId: toIntOrNull(json['claim_id']),
     );
   }
 

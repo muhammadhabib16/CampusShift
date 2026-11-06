@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/barter_deal.dart';
 import '../models/barter_item.dart';
 import '../services/barter_service.dart';
+import '../utils/error_message.dart';
 
 /// State dan logika Modul 3 (Barter). View hanya membaca state dari sini
 /// dan meneruskan aksi pengguna, tanpa memanggil service secara langsung.
@@ -52,15 +53,25 @@ class BarterViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _myItems = await _service.getMyActiveItems();
-      _targetItem = await _service.getTargetItem();
+      // Mode server: target ditetapkan dari layar detail barang.
+      _targetItem = await _service.getTargetItem() ?? _targetItem;
       _deals = await _service.getMyDeals();
       if (_selectedIndex >= _myItems.length) _selectedIndex = 0;
     } catch (e) {
-      _errorMessage = 'Gagal memuat data barter';
+      _errorMessage = errorMessageOf(e, fallback: 'Gagal memuat data barter');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Memuat ulang barang milik sendiri yang dapat ditawarkan.
+  Future<void> refreshMyItems() async {
+    try {
+      _myItems = await _service.getMyActiveItems();
+      if (_selectedIndex >= _myItems.length) _selectedIndex = 0;
+      notifyListeners();
+    } catch (_) {}
   }
 
   /// Menetapkan barang milik orang lain yang akan ditawar (dari detail barang).
@@ -87,6 +98,13 @@ class BarterViewModel extends ChangeNotifier {
     if (amount < 0) {
       return 'Tidak boleh bernilai negatif';
     }
+    // BR-16: Rp0–5.000.000, kelipatan Rp1.000.
+    if (amount > 5000000) {
+      return 'Maksimal Rp5.000.000';
+    }
+    if (amount % 1000 != 0) {
+      return 'Harus kelipatan Rp1.000';
+    }
     return null;
   }
 
@@ -99,8 +117,57 @@ class BarterViewModel extends ChangeNotifier {
 
   /// Konfirmasi hanya dapat diberikan sekali dan selama tawaran masih berjalan.
   bool canConfirm(BarterDeal deal) {
-    return !deal.myConfirmed &&
-        (deal.status == 'Menunggu' || deal.status == 'Negosiasi');
+    // Server mengirim `can_confirm`; data contoh memakai aturan bawaan.
+    return deal.canConfirm ??
+        (!deal.myConfirmed &&
+            (deal.status == 'Menunggu' || deal.status == 'Negosiasi'));
+  }
+
+  void _replaceDeal(BarterDeal updated) {
+    _deals = [for (final d in _deals) d.id == updated.id ? updated : d];
+  }
+
+  /// Penerima menolak tawaran (FR-12).
+  Future<bool> rejectDeal(String dealId, {String? reason}) async {
+    final deal = dealById(dealId);
+    if (deal == null) return false;
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      _replaceDeal(await _service.rejectDeal(deal, reason: reason));
+      return true;
+    } catch (e) {
+      _errorMessage = errorMessageOf(e, fallback: 'Gagal menolak tawaran, coba lagi');
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Membatalkan / menarik tawaran (BR-20).
+  Future<bool> cancelDeal(String dealId, {String? reason}) async {
+    final deal = dealById(dealId);
+    if (deal == null) return false;
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final updated = await _service.cancelDeal(deal, reason: reason);
+      if (updated == null) {
+        _deals = _deals.where((d) => d.id != dealId).toList();
+      } else {
+        _replaceDeal(updated);
+      }
+      return true;
+    } catch (e) {
+      _errorMessage = errorMessageOf(e, fallback: 'Gagal membatalkan tawaran, coba lagi');
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
   }
 
   /// Dual-confirmation (FR-13). Mengembalikan true bila konfirmasi tercatat.
@@ -113,10 +180,14 @@ class BarterViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final updated = await _service.confirmDeal(deal);
-      _deals = [for (final d in _deals) d.id == dealId ? updated : d];
+      _replaceDeal(updated);
       return true;
     } catch (e) {
-      _errorMessage = 'Gagal mengonfirmasi kesepakatan, coba lagi';
+      _errorMessage = errorMessageOf(e, fallback: 'Gagal mengonfirmasi kesepakatan, coba lagi');
+      // Status mungkin berubah di server (mis. penguncian gagal): muat ulang.
+      try {
+        _deals = await _service.getMyDeals();
+      } catch (_) {}
       return false;
     } finally {
       _isSubmitting = false;
@@ -141,9 +212,12 @@ class BarterViewModel extends ChangeNotifier {
         targetItem: target,
         cashTopUp: int.parse(topUpText.trim()),
       );
+      try {
+        _deals = await _service.getMyDeals();
+      } catch (_) {}
       return true;
     } catch (e) {
-      _errorMessage = 'Gagal mengirim penawaran, coba lagi';
+      _errorMessage = errorMessageOf(e, fallback: 'Gagal mengirim penawaran, coba lagi');
       return false;
     } finally {
       _isSubmitting = false;

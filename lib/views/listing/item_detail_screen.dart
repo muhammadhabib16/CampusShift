@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/barter_item.dart';
 import '../../models/item_model.dart';
+import '../../models/social_grant.dart';
+import '../../viewmodels/auth_view_model.dart';
 import '../../shared/widgets/shared_widgets.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/formatters.dart';
 import '../barter/widgets/barter_item_selection_sheet.dart';
-import '../katalog_hibah_screen.dart';
+import '../ajukan_klaim_screen.dart';
+import '../public_profile_screen.dart';
 import '../safe_meet/meetup_form_screen.dart';
 
 class ItemDetailScreen extends StatefulWidget {
@@ -27,6 +31,12 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         ? item.photoUrls
         : ['https://via.placeholder.com/600x450'];
     final isGrant = item.listingType == 'Hibah';
+    // Pemilik tidak dapat bertransaksi dengan barangnya sendiri (BR-08/14/27),
+    // dan hanya barang Available yang dapat diajukan.
+    final currentUserId = context.watch<AuthViewModel>().currentUser?.id;
+    final isOwner = currentUserId != null && currentUserId == item.ownerId;
+    final isAvailable = item.status == 'Available';
+    final canBarter = !isGrant && item.isBarterOpen;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -123,11 +133,13 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Badges: Status dan Kondisi Fisik
-                  Row(
+                  // Badges: Status, Kondisi Fisik, Kategori
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       StatusBadge(status: item.status),
-                      const SizedBox(width: AppSpacing.sm),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -147,15 +159,33 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                           ),
                         ),
                       ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: AppRadius.pill,
+                          border: Border.all(color: AppColors.outline),
+                        ),
+                        child: Text(
+                          item.category,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
                       if (item.isBarterOpen) ...[
-                        const SizedBox(width: AppSpacing.sm),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
+                            color: AppColors.warningContainer,
                             borderRadius: AppRadius.pill,
                           ),
                           child: const Text(
@@ -188,12 +218,28 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   // Penjual Info
                   AppCard(
                     padding: const EdgeInsets.all(AppSpacing.md),
+                    onTap: int.tryParse(item.ownerId) == null
+                        ? null
+                        : () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => PublicProfileScreen(
+                                userId: int.parse(item.ownerId),
+                                fallbackName: item.ownerName.isEmpty
+                                    ? 'Mahasiswa Unand'
+                                    : item.ownerName,
+                              ),
+                            ),
+                          ),
                     child: AvatarWithName(
                       name: item.ownerName.isEmpty
                           ? 'Mahasiswa Unand'
                           : item.ownerName,
-                      subtitle: 'Kategori: ${item.category}',
+                      subtitle: 'Pemilik barang · Lihat profil & ulasan',
                       radius: 20,
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -282,68 +328,107 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           boxShadow: AppElevation.softShadow,
         ),
         child: SafeArea(
-          child: Row(
-            children: [
-              if (item.isBarterOpen) ...[
-                Expanded(
-                  child: AppSecondaryButton(
-                    label: 'Tukar (Barter)',
-                    icon: Icons.swap_horiz_rounded,
-                    onPressed: () {
-                      BarterItemSelectionSheet.show(
-                        context,
-                        target: BarterItem(
-                          id: item.id,
-                          name: item.title,
-                          price: item.price,
-                          category: item.category,
-                          condition: item.condition,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-              ],
-              Expanded(
-                flex: item.isBarterOpen ? 2 : 1,
-                child: AppPrimaryButton(
-                  label: isGrant
-                      ? 'Ajukan Klaim Hibah'
-                      : 'Ajukan Pertemuan COD',
-                  icon: isGrant
-                      ? Icons.volunteer_activism_rounded
-                      : Icons.handshake_outlined,
-                  onPressed: () {
-                    if (isGrant) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const KatalogHibahScreen(),
-                        ),
-                      );
-                      return;
-                    }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MeetupFormScreen(
-                          itemId: int.tryParse(item.id) ?? 0,
-                          itemTitle: item.title,
-                          itemPrice: formatRupiah(item.price),
-                          itemType: 'Jual',
-                          ownerId: int.tryParse(item.ownerId) ?? 0,
-                          ownerName: item.ownerName.isEmpty
-                              ? 'Pemilik Barang'
-                              : item.ownerName,
+          child: (isOwner || !isAvailable)
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          isOwner
+                              ? 'Ini barang milikmu. Kelola lewat menu Barang Saya.'
+                              : 'Barang sedang tidak tersedia untuk diajukan.',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                    );
-                  },
+                    ],
+                  ),
+                )
+              : Row(
+                  children: [
+                    if (canBarter) ...[
+                      Expanded(
+                        child: AppSecondaryButton(
+                          label: 'Tukar (Barter)',
+                          icon: Icons.swap_horiz_rounded,
+                          onPressed: () {
+                            BarterItemSelectionSheet.show(
+                              context,
+                              target: BarterItem(
+                                id: item.id,
+                                name: item.title,
+                                price: item.price,
+                                category: item.category,
+                                condition: item.condition,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                    ],
+                    Expanded(
+                      flex: canBarter ? 2 : 1,
+                      child: AppPrimaryButton(
+                        label: isGrant
+                            ? 'Ajukan Klaim Hibah'
+                            : 'Ajukan Pertemuan COD',
+                        icon: isGrant
+                            ? Icons.volunteer_activism_rounded
+                            : Icons.handshake_outlined,
+                        onPressed: () {
+                          if (isGrant) {
+                            // FR-23: langsung ke form klaim untuk barang ini.
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AjukanKlaimScreen(
+                                  grant: SocialGrant(
+                                    id: item.id,
+                                    ownerUserId: item.ownerId,
+                                    ownerName: item.ownerName.isEmpty
+                                        ? 'Donatur Unand'
+                                        : item.ownerName,
+                                    title: item.title,
+                                    description: item.description,
+                                    category: item.category,
+                                    condition: item.condition,
+                                    photoUrls: item.photoUrls,
+                                    status: item.status,
+                                  ),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MeetupFormScreen(
+                                itemId: int.tryParse(item.id) ?? 0,
+                                itemTitle: item.title,
+                                itemPrice: formatRupiah(item.price),
+                                itemType: 'Jual',
+                                ownerId: int.tryParse(item.ownerId) ?? 0,
+                                ownerName: item.ownerName.isEmpty
+                                    ? 'Pemilik Barang'
+                                    : item.ownerName,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );

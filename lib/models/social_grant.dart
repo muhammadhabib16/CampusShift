@@ -39,7 +39,9 @@ class SocialGrant {
 
   factory SocialGrant.fromJson(Map<String, dynamic> json) {
     List<String> photos = [];
-    if (json['photo_urls'] is List) {
+    if (json['url_foto'] is List) {
+      photos = List<String>.from(json['url_foto'].map((e) => e.toString()));
+    } else if (json['photo_urls'] is List) {
       photos = List<String>.from(json['photo_urls'].map((e) => e.toString()));
     } else if (json['photoUrls'] is List) {
       photos = List<String>.from(json['photoUrls'].map((e) => e.toString()));

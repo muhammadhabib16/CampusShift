@@ -20,6 +20,10 @@ class MeetupFormScreen extends StatefulWidget {
   final int ownerId;
   final String ownerName;
 
+  /// Referensi jalur Barter (kesepakatan Locked) / Hibah (klaim Approved).
+  final int? dealId;
+  final int? claimId;
+
   const MeetupFormScreen({
     super.key,
     this.existingMeetup,
@@ -30,6 +34,8 @@ class MeetupFormScreen extends StatefulWidget {
     this.itemType = 'Jual',
     this.ownerId = 2,
     this.ownerName = 'Muhammad Racha',
+    this.dealId,
+    this.claimId,
   });
 
   bool get isEditMode => existingMeetup != null;
@@ -67,6 +73,17 @@ class _MeetupFormScreenState extends State<MeetupFormScreen> {
           widget.initialSafeMeetPoint ?? _repository.getSafeMeetPoints().first;
       _selectedDate = defaultTime;
       _selectedTime = TimeOfDay.fromDateTime(defaultTime);
+      if (widget.initialSafeMeetPoint == null) {
+        // Pastikan titik bawaan adalah titik resmi dari server (point_id valid).
+        _repository.refresh().then((_) {
+          if (!mounted) return;
+          final points = _repository.getSafeMeetPoints();
+          if (points.isNotEmpty &&
+              !points.any((p) => p.id == _selectedPoint.id)) {
+            setState(() => _selectedPoint = points.first);
+          }
+        });
+      }
     }
 
     _runLiveValidation();
@@ -156,7 +173,7 @@ class _MeetupFormScreenState extends State<MeetupFormScreen> {
       AppSnackBar.showError(
         context,
         validation.message ??
-            'Waktu pertemuan tidak memenuhi syarat minimal 1 jam (BR-07).',
+            'Waktu pertemuan tidak memenuhi syarat minimal 1 jam.',
       );
       return;
     }
@@ -182,6 +199,8 @@ class _MeetupFormScreenState extends State<MeetupFormScreen> {
           safeMeetPoint: _selectedPoint,
           scheduledTime: scheduled,
           notes: _notesController.text.trim(),
+          dealId: widget.dealId,
+          claimId: widget.claimId,
         );
       }
 
@@ -193,7 +212,7 @@ class _MeetupFormScreenState extends State<MeetupFormScreen> {
         context,
         widget.isEditMode
             ? 'Jadwal pertemuan berhasil diperbarui.'
-            : 'Ajukan pertemuan berhasil dikirim ke pemilik barang.',
+            : 'Ajakan pertemuan berhasil dikirim ke pemilik barang.',
       );
 
       Navigator.of(context).pushReplacement(
@@ -202,7 +221,7 @@ class _MeetupFormScreenState extends State<MeetupFormScreen> {
     } catch (e) {
       setState(() => _isSubmitting = false);
       if (!mounted) return;
-      AppSnackBar.showError(context, 'Gagal menyimpan jadwal pertemuan: $e');
+      AppSnackBar.showError(context, 'Gagal menyimpan jadwal pertemuan. $e');
     }
   }
 
@@ -273,11 +292,17 @@ class _MeetupFormScreenState extends State<MeetupFormScreen> {
                           color: AppColors.primary,
                         ),
                       ),
-                      Text(
-                        'Pemilik: ${widget.ownerName}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+                      const SizedBox(width: AppSpacing.md),
+                      Flexible(
+                        child: Text(
+                          'Pemilik: ${widget.ownerName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -296,16 +321,18 @@ class _MeetupFormScreenState extends State<MeetupFormScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Titik Temu Resmi Unand',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                      const Expanded(
+                        child: Text(
+                          'Titik Temu Resmi Unand',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                       AppTextButton(
-                        label: 'Ganti Titik',
+                        label: 'Ganti',
                         icon: Icons.edit_location_alt_rounded,
                         onPressed: _changeSafeMeetPoint,
                       ),
@@ -373,7 +400,7 @@ class _MeetupFormScreenState extends State<MeetupFormScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Batas minimal 1 jam dari sekarang & maksimal 14 hari ke depan (BR-07).',
+                    'Paling cepat 1 jam dari sekarang, paling lambat 14 hari ke depan.',
                     style: TextStyle(
                       fontSize: 11,
                       color: AppColors.textSecondary,

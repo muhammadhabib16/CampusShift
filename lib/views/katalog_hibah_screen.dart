@@ -4,6 +4,8 @@ import '../viewmodels/grant_claim_viewmodel.dart';
 import '../viewmodels/social_grant_viewmodel.dart';
 import 'ajukan_klaim_screen.dart';
 import 'daftar_detail_klaim_screen.dart';
+import '../shared/widgets/user_link.dart';
+import '../theme/app_tokens.dart';
 
 class KatalogHibahScreen extends StatefulWidget {
   const KatalogHibahScreen({super.key});
@@ -43,7 +45,7 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Katalog Hibah Unand'),
-        backgroundColor: const Color(0xFF0D9488),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -107,7 +109,7 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                         return ChoiceChip(
                           label: Text(cat),
                           selected: selected,
-                          selectedColor: const Color(0xFF0D9488).withValues(alpha: 0.18),
+                          selectedColor: AppColors.primary.withValues(alpha: 0.18),
                           onSelected: (_) => _grantVm.setCategory(cat),
                         );
                       },
@@ -123,17 +125,17 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                 color: const Color(0xFFF0FDFA),
                 border: Border(
                   bottom: BorderSide(
-                    color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                    color: AppColors.primary.withValues(alpha: 0.15),
                   ),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF0D9488)),
+                  const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primary),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Kuota Klaim: ${_claimVm.activeClaimCount}/3 aktif (BR-28)',
+                      'Kuota Klaim: ${_claimVm.activeClaimCount}/3 aktif',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -163,11 +165,11 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF0D9488),
+                              color: AppColors.primary,
                             ),
                           ),
                           SizedBox(width: 2),
-                          Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFF0D9488)),
+                          Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.primary),
                         ],
                       ),
                     ),
@@ -183,7 +185,7 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                           child: Padding(
                             padding: EdgeInsets.all(24),
                             child: Text(
-                              'Barang hibah tidak ditemukan (AC-03).',
+                              'Barang hibah tidak ditemukan.',
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -235,13 +237,13 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                    color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text(
                     'HIBAH • GRATIS (Rp0)',
                     style: TextStyle(
-                      color: Color(0xFF0D9488),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
                     ),
@@ -279,8 +281,11 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                 const Icon(Icons.person_outline_rounded, size: 16, color: Colors.grey),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: Text(
-                    'Donatur: ${item.ownerName} (${item.ownerReputation.toStringAsFixed(1)} ★)',
+                  child: UserLink(
+                    userId: item.ownerUserId,
+                    name: item.ownerName,
+                    prefix: 'Donatur: ',
+                    suffix: ' (${item.ownerReputation.toStringAsFixed(1)} ★)',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -289,7 +294,7 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D9488),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -300,7 +305,7 @@ class _KatalogHibahScreenState extends State<KatalogHibahScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Batas klaim aktif tercapai (maksimal 3 klaim Pending/Approved sekaligus - BR-28).',
+                                'Batas klaim aktif tercapai (maksimal 3 klaim Pending/Approved sekaligus).',
                               ),
                               backgroundColor: Colors.redAccent,
                             ),

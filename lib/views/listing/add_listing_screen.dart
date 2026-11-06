@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/listing_options.dart';
+
 import '../../shared/widgets/shared_widgets.dart';
 import '../../theme/app_tokens.dart';
 import '../../viewmodels/item_viewmodel.dart';
@@ -27,21 +29,11 @@ class _AddListingScreenState extends State<AddListingScreen> {
   String _selectedCategory = 'Buku & Referensi';
   String _listingType = 'Jual';
   bool _isBarterOpen = false;
-  String _selectedCondition = 'Sangat Baik (Grade A)';
+  String _selectedCondition = ListingOptions.defaultCondition;
 
-  final List<String> _categories = [
-    'Buku & Referensi',
-    'Elektronik & Gadget',
-    'Furnitur Kos',
-    'Alat Perkuliahan',
-  ];
-
-  final List<String> _conditions = [
-    'Baru (Segel / Belum Terpakai)',
-    'Sangat Baik (Grade A)',
-    'Baik (Grade B)',
-    'Cukup (Grade C)',
-  ];
+  // Nilai resmi backend (ITEM_CATEGORIES / ITEM_CONDITIONS).
+  final List<String> _categories = ListingOptions.categories;
+  final List<String> _conditions = ListingOptions.conditions;
 
   @override
   void dispose() {
@@ -58,7 +50,11 @@ class _AddListingScreenState extends State<AddListingScreen> {
     }
     final XFile? photo = await _picker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 70,
+      // Foto kamera asli bisa >5 MB (batas server BR-03) dan lambat diunggah.
+      // Resolusi 1600px cukup untuk melihat kondisi barang (~200–600 KB).
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 75,
     );
     if (photo != null) {
       setState(() {
@@ -78,7 +74,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
     if (_images.length < 2) {
       AppSnackBar.showError(
         context,
-        'Minimal 2 foto kondisi fisik wajib dilampirkan (BR-03).',
+        'Minimal 2 foto kondisi fisik wajib dilampirkan.',
       );
       return;
     }
@@ -178,7 +174,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
                           SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              'Peringatan BR-03: Minimal 2 foto fisik wajib diunggah.',
+                              'Peringatan: Minimal 2 foto fisik wajib diunggah.',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -209,7 +205,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
                     showCounter: true,
                     validator: (value) {
                       if (value == null || value.trim().length < 5) {
-                        return 'Judul minimal 5 karakter (BR-01)';
+                        return 'Judul minimal 5 karakter';
                       }
                       return null;
                     },
@@ -333,7 +329,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
                       validator: (value) {
                         final price = int.tryParse(value ?? '');
                         if (price == null || price < 1000 || price > 50000000) {
-                          return 'Rentang Rp 1.000 – Rp 50.000.000 (BR-02)';
+                          return 'Rentang Rp 1.000 – Rp 50.000.000';
                         }
                         return null;
                       },
@@ -368,57 +364,59 @@ class _AddListingScreenState extends State<AddListingScreen> {
             // Kondisi Fisik
             AppCard(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Kondisi Fisik Barang *',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+              child: RadioGroup<String>(
+                groupValue: _selectedCondition,
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedCondition = val);
+                  }
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Kondisi Fisik Barang *',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  ..._conditions.map((cond) {
-                    final isSelected = _selectedCondition == cond;
-                    return InkWell(
-                      onTap: () => setState(() => _selectedCondition = cond),
-                      borderRadius: AppRadius.medium,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          children: [
-                            Radio<String>(
-                              value: cond,
-                              groupValue: _selectedCondition,
-                              activeColor: AppColors.primary,
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() => _selectedCondition = val);
-                                }
-                              },
-                            ),
-                            Expanded(
-                              child: Text(
-                                cond,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                  color: isSelected
-                                      ? AppColors.textPrimary
-                                      : AppColors.textSecondary,
+                    const SizedBox(height: AppSpacing.sm),
+                    ..._conditions.map((cond) {
+                      final isSelected = _selectedCondition == cond;
+                      return InkWell(
+                        onTap: () => setState(() => _selectedCondition = cond),
+                        borderRadius: AppRadius.medium,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Radio<String>(
+                                value: cond,
+                                activeColor: AppColors.primary,
+                              ),
+                              Expanded(
+                                child: Text(
+                                  ListingOptions.conditionLabel(cond),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: isSelected
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
-                ],
+                      );
+                    }),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -439,7 +437,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
                     showCounter: true,
                     validator: (value) {
                       if (value == null || value.trim().length < 20) {
-                        return 'Deskripsi minimal 20 karakter (BR-01)';
+                        return 'Deskripsi minimal 20 karakter';
                       }
                       return null;
                     },

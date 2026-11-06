@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/grant_claim.dart';
 import '../models/social_grant.dart';
 import '../viewmodels/grant_claim_viewmodel.dart';
+import '../theme/app_tokens.dart';
 
 class AjukanKlaimScreen extends StatefulWidget {
   final SocialGrant? grant;
@@ -31,21 +32,21 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
       'value': 'Mendesak',
       'label': 'Mendesak',
       'desc': 'Dibutuhkan segera untuk kuliah/praktikum minggu ini',
-      'color': Color(0xFFDC2626),
+      'color': AppColors.error,
       'icon': Icons.priority_high_rounded,
     },
     {
       'value': 'Sedang',
       'label': 'Sedang',
       'desc': 'Dibutuhkan untuk menunjang perkuliahan semester ini',
-      'color': Color(0xFFD97706),
+      'color': AppColors.warning,
       'icon': Icons.schedule_rounded,
     },
     {
       'value': 'Rendah',
       'label': 'Rendah',
       'desc': 'Bermanfaat sebagai perlengkapan belajar tambahan',
-      'color': Color(0xFF0D9488),
+      'color': AppColors.primary,
       'icon': Icons.low_priority_rounded,
     },
   ];
@@ -78,7 +79,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
     if (!_isJustificationValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Justifikasi kebutuhan wajib minimal 100 karakter dan maksimal 1.000 karakter (BR-27).'),
+          content: Text('Justifikasi kebutuhan wajib minimal 100 karakter dan maksimal 1.000 karakter.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -95,7 +96,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
         setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Klaim berstatus ${claim.status} tidak dapat disunting (AC-30).'),
+            content: Text('Klaim berstatus ${claim.status} tidak dapat disunting.'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -114,7 +115,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Perubahan klaim berhasil disimpan.'),
-            backgroundColor: Color(0xFF0D9488),
+            backgroundColor: AppColors.primary,
           ),
         );
         Navigator.pop(context, true);
@@ -150,7 +151,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Klaim hibah berhasil diajukan! Menunggu persetujuan donatur.'),
-          backgroundColor: Color(0xFF0D9488),
+          backgroundColor: AppColors.primary,
         ),
       );
       Navigator.pop(context, created);
@@ -179,7 +180,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditMode ? 'Sunting Klaim Hibah' : 'Form Klaim Hibah'),
-        backgroundColor: const Color(0xFF0D9488),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -204,12 +205,12 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                            color: AppColors.primary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
                             Icons.volunteer_activism_rounded,
-                            color: Color(0xFF0D9488),
+                            color: AppColors.primary,
                             size: 28,
                           ),
                         ),
@@ -254,7 +255,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Aturan Klaim (FR-23 & BR-28): Maksimal 1 klaim per barang dan maksimal 3 klaim aktif (Pending/Approved) sekaligus.',
+                          'Aturan Klaim: Maksimal 1 klaim per barang dan maksimal 3 klaim aktif (Pending/Approved) sekaligus.',
                           style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
                         ),
                       ),
@@ -334,7 +335,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: _isJustificationValid
-                            ? const Color(0xFF0D9488).withValues(alpha: 0.12)
+                            ? AppColors.primary.withValues(alpha: 0.12)
                             : Colors.red.shade50,
                         borderRadius: BorderRadius.circular(6),
                       ),
@@ -343,7 +344,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: _isJustificationValid ? const Color(0xFF0D9488) : Colors.red.shade700,
+                          color: _isJustificationValid ? AppColors.primary : Colors.red.shade700,
                         ),
                       ),
                     ),
@@ -362,23 +363,23 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Color(0xFF0D9488), width: 2),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 2),
                     ),
                     helperText: _charCount < 100
                         ? 'Minimal 100 karakter (kurang ${100 - _charCount} karakter lagi)'
-                        : 'Panjang justifikasi sudah memenuhi syarat (BR-27).',
+                        : 'Panjang justifikasi sudah memenuhi syarat.',
                     helperStyle: TextStyle(
-                      color: _charCount < 100 ? Colors.red.shade700 : const Color(0xFF0D9488),
+                      color: _charCount < 100 ? Colors.red.shade700 : AppColors.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   validator: (value) {
                     final text = (value ?? '').trim();
                     if (text.length < 100) {
-                      return 'Minimal 100 karakter diperlukan (AC-27).';
+                      return 'Minimal 100 karakter diperlukan.';
                     }
                     if (text.length > 1000) {
-                      return 'Maksimal 1.000 karakter (BR-27).';
+                      return 'Maksimal 1.000 karakter.';
                     }
                     return null;
                   },
@@ -390,7 +391,7 @@ class _AjukanKlaimScreenState extends State<AjukanKlaimScreen> {
                   child: ElevatedButton.icon(
                     onPressed: (_isSubmitting || !_isJustificationValid) ? null : _handleSubmit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D9488),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.grey.shade300,
                       shape: RoundedRectangleBorder(

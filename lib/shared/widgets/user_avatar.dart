@@ -3,7 +3,56 @@ import 'package:flutter/material.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/formatters.dart';
 
-/// Avatar profil dengan fallback inisial di atas latar primaryContainer (Section 4.3).
+/// Inisial dari nama (maks. 2 huruf), mis. "Muhammad Habib" → "MH".
+String initialsOf(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+  if (parts.isEmpty) return '?';
+  return parts.take(2).map((p) => p[0].toUpperCase()).join();
+}
+
+/// Foto profil bulat dengan inisial sebagai cadangan bila foto kosong atau
+/// gagal dimuat. Satu-satunya widget avatar pengguna di aplikasi.
+class ProfileAvatar extends StatelessWidget {
+  const ProfileAvatar({
+    super.key,
+    required this.name,
+    this.imageUrl,
+    this.image,
+    this.radius = 20,
+  });
+
+  final String name;
+  final String? imageUrl;
+
+  /// Gambar lokal (mis. foto yang baru dipilih); diutamakan atas [imageUrl].
+  final ImageProvider? image;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider =
+        image ??
+        ((imageUrl != null && imageUrl!.isNotEmpty)
+            ? NetworkImage(imageUrl!)
+            : null);
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primaryContainer,
+      foregroundImage: provider,
+      onForegroundImageError: provider == null ? null : (_, _) {},
+      child: Text(
+        initialsOf(name),
+        style: TextStyle(
+          fontSize: radius * 0.7,
+          fontWeight: FontWeight.w700,
+          color: AppColors.onPrimaryContainer,
+        ),
+      ),
+    );
+  }
+}
+
+/// Avatar + nama + subjudul dalam satu baris (Section 4.3).
 class AvatarWithName extends StatelessWidget {
   const AvatarWithName({
     super.key,
@@ -22,28 +71,12 @@ class AvatarWithName extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
 
-  String get _initials {
-    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
-    if (parts.isEmpty) return '?';
-    return parts.take(2).map((p) => p[0].toUpperCase()).join();
-  }
-
   @override
   Widget build(BuildContext context) {
-    Widget avatar = CircleAvatar(
+    final avatar = ProfileAvatar(
+      name: name,
+      imageUrl: imageUrl,
       radius: radius,
-      backgroundColor: AppColors.primaryContainer,
-      foregroundImage: (imageUrl != null && imageUrl!.isNotEmpty)
-          ? NetworkImage(imageUrl!)
-          : null,
-      child: Text(
-        _initials,
-        style: TextStyle(
-          fontSize: radius * 0.75,
-          fontWeight: FontWeight.w700,
-          color: AppColors.onPrimaryContainer,
-        ),
-      ),
     );
 
     Widget content = Row(
@@ -145,12 +178,18 @@ class RatingStars extends StatelessWidget {
         Icon(Icons.star_rounded, color: AppColors.accent, size: size),
         if (showText) ...[
           const SizedBox(width: 4),
-          Text(
-            formatSkor(rating, reviewCount),
-            style: TextStyle(
-              fontSize: size * 0.72,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+          // Flexible: teks dipotong (…) alih-alih overflow saat ruang sempit
+          // atau ukuran font sistem besar.
+          Flexible(
+            child: Text(
+              formatSkor(rating, reviewCount),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: size * 0.72,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],

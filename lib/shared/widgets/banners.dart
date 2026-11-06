@@ -94,41 +94,42 @@ class StepBanner extends StatelessWidget {
               color: AppColors.surface,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              stepNumber != null
-                  ? Icons.arrow_forward_rounded
-                  : Icons.lightbulb_rounded,
-              color: AppColors.accent,
-              size: 20,
-            ),
+            alignment: Alignment.center,
+            child: stepNumber != null
+                ? Text(
+                    '$stepNumber',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : const Icon(
+                    Icons.lightbulb_rounded,
+                    color: AppColors.accent,
+                    size: 20,
+                  ),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (stepNumber != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      'LANGKAH $stepNumber',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
                 Row(
                   children: [
-                    if (stepNumber != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'LANGKAH $stepNumber',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
                     Expanded(
                       child: Text(
                         title,

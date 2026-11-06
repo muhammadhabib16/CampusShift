@@ -4,6 +4,8 @@ import 'package:latlong2/latlong.dart';
 
 import '../../models/safe_meet_point.dart';
 import '../../services/maps_launcher_service.dart';
+import '../../services/meetup_repository.dart';
+import '../listing/catalog_screen.dart';
 import '../../shared/widgets/shared_widgets.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/formatters.dart';
@@ -113,7 +115,7 @@ class SafeMeetDetailScreen extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
+                        color: AppColors.successContainer,
                         borderRadius: AppRadius.pill,
                       ),
                       child: const Row(
@@ -122,7 +124,7 @@ class SafeMeetDetailScreen extends StatelessWidget {
                           Icon(
                             Icons.verified,
                             size: 12,
-                            color: Color(0xFF15803D),
+                            color: AppColors.success,
                           ),
                           SizedBox(width: 4),
                           Text(
@@ -130,7 +132,7 @@ class SafeMeetDetailScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF15803D),
+                              color: AppColors.success,
                             ),
                           ),
                         ],
@@ -225,7 +227,7 @@ class SafeMeetDetailScreen extends StatelessWidget {
                 ),
                 const Divider(height: 24, color: AppColors.outline),
                 const Text(
-                  'Fitur Keamanan Terverifikasi (BR-07):',
+                  'Fitur Keamanan Terverifikasi:',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -296,6 +298,18 @@ class SafeMeetDetailScreen extends StatelessWidget {
             label: 'Ajukan Pertemuan di Titik Ini',
             icon: Icons.calendar_month_rounded,
             onPressed: () {
+              // Pertemuan selalu terikat pada satu barang. Mode server:
+              // pilih barang dari Katalog terlebih dahulu.
+              if (MeetupRepository().isOnlineMode) {
+                AppSnackBar.showInfo(
+                  context,
+                  'Pilih barang di Katalog, lalu tekan "Ajukan Pertemuan" dan pilih titik ini.',
+                );
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CatalogScreen()),
+                );
+                return;
+              }
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => MeetupFormScreen(

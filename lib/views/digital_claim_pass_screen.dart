@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/grant_claim.dart';
+import '../theme/app_tokens.dart';
 
 /// Sesuai PRD Bagian 3.2 (Out of Scope):
 /// "Digital Claim Pass terpisah ditiadakan; bukti pengambilan hibah menggunakan
@@ -15,7 +16,7 @@ class DigitalClaimPassScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Status Pengambilan Hibah'),
-        backgroundColor: const Color(0xFF0D9488),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: Padding(
@@ -30,7 +31,7 @@ class DigitalClaimPassScreen extends StatelessWidget {
                 const Icon(
                   Icons.qr_code_scanner_rounded,
                   size: 64,
-                  color: Color(0xFF0D9488),
+                  color: AppColors.primary,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -41,8 +42,8 @@ class DigitalClaimPassScreen extends StatelessWidget {
                 const SizedBox(height: 10),
                 const Text(
                   'Sesuai PRD v1.4 terbaru, pengambilan barang hibah yang telah Approved '
-                  'dijadwalkan melalui Modul 2 (Safe-Meet Point Unand) dan divalidasi saat bertemu '
-                  'menggunakan pemindaian Kode QR sekali pakai pada Modul 4.',
+                  'dijadwalkan di Safe-Meet Point Unand dan divalidasi saat bertemu '
+                  'dengan memindai Kode QR sekali pakai.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13.5, height: 1.5),
                 ),
@@ -51,7 +52,7 @@ class DigitalClaimPassScreen extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D9488),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () => Navigator.pop(context),

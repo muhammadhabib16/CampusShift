@@ -13,6 +13,9 @@ class ListingSummary {
   final String ownerName;
   final String condition; // Baru, Sangat Baik, Baik, Cukup
 
+  /// Foto pertama listing (null bila tidak ada; kartu menampilkan ikon kategori).
+  final String? photoUrl;
+
   const ListingSummary({
     required this.id,
     required this.title,
@@ -22,6 +25,7 @@ class ListingSummary {
     required this.ownerId,
     required this.ownerName,
     this.condition = 'Baik',
+    this.photoUrl,
   });
 
   /// Listing Modul 1 belum membawa data fakultas, jadi baris kedua kartu
@@ -36,6 +40,7 @@ class ListingSummary {
       ownerId: int.tryParse(item.ownerId) ?? 0,
       ownerName: item.ownerName.isEmpty ? 'Pemilik Barang' : item.ownerName,
       condition: item.condition,
+      photoUrl: item.photoUrls.isNotEmpty ? item.photoUrls.first : null,
     );
   }
 
